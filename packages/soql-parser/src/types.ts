@@ -82,8 +82,8 @@ export interface WhereClause {
 }
 
 export interface GroupByClause {
-  fields: FieldPath[]
-  rollup?: boolean
+    fields: FieldPath[]
+    rollup?: boolean
 }
 
 export interface StringLiteral {
@@ -106,22 +106,64 @@ export interface DateValueLiteral {
     value: string // ISO 8601 date string (YYYY-MM-DD)
 }
 
-export interface DateLiteral {
-  type: "dateLiteral"
-  value:
-    | "TODAY"
-    | "YESTERDAY"
-    | "TOMORROW"
-    | "THIS_WEEK"
-    | "LAST_WEEK"
-    | "NEXT_WEEK"
-    | "THIS_MONTH"
-    | "LAST_MONTH"
-    | "NEXT_MONTH"
-    | { type: "LAST_N_DAYS"; n: number }
-    | { type: "NEXT_N_DAYS"; n: number }
-}
+export const DATE_LITERALS = [
+    'TODAY',
+    'YESTERDAY',
+    'TOMORROW',
+    'THIS_WEEK',
+    'LAST_WEEK',
+    'NEXT_WEEK',
+    'THIS_MONTH',
+    'LAST_MONTH',
+    'NEXT_MONTH',
+    'LAST_90_DAYS',
+    'NEXT_90_DAYS',
+    'THIS_QUARTER',
+    'LAST_QUARTER',
+    'NEXT_QUARTER',
+    'THIS_YEAR',
+    'LAST_YEAR',
+    'NEXT_YEAR',
+    'THIS_FISCAL_QUARTER',
+    'LAST_FISCAL_QUARTER',
+    'NEXT_FISCAL_QUARTER',
+    'THIS_FISCAL_YEAR',
+    'LAST_FISCAL_YEAR',
+    'NEXT_FISCAL_YEAR',
+] as const
 
+export const DATE_LITERALS_DYNAMIC = [
+    'LAST_N_DAYS',
+    'NEXT_N_DAYS',
+    'N_DAYS_AGO',
+    'NEXT_N_WEEKS',
+    'LAST_N_WEEKS',
+    'N_WEEKS_AGO',
+    'NEXT_N_MONTHS',
+    'LAST_N_MONTHS',
+    'N_MONTHS_AGO',
+    'NEXT_N_QUARTERS',
+    'LAST_N_QUARTERS',
+    'N_QUARTERS_AGO',
+    'NEXT_N_YEARS',
+    'LAST_N_YEARS',
+    'N_YEARS_AGO',
+    'NEXT_N_FISCAL_YEARS',
+    'LAST_N_FISCAL_YEARS',
+    'N_FISCAL_YEARS_AGO',
+    'NEXT_N_FISCAL_QUARTERS',
+    'LAST_N_FISCAL_QUARTERS',
+] as const
+
+export interface DateLiteral {
+    type: 'dateLiteral'
+    value:
+        | (typeof DATE_LITERALS)[number]
+        | {
+              type: (typeof DATE_LITERALS_DYNAMIC)[number]
+              n: number
+          }
+}
 
 export interface DateTimeLiteral {
     type: 'datetime'
@@ -139,15 +181,15 @@ export interface NullLiteral {
 }
 
 export type ValueExpr =
-  | StringLiteral
-  | NumberLiteral
-  | BooleanLiteral
-  | DateLiteral
-  | DateValueLiteral
-  | DateTimeLiteral
-  | BindVariable
-  | NullLiteral
-  | ValueExpr[] // for IN operator
+    | StringLiteral
+    | NumberLiteral
+    | BooleanLiteral
+    | DateLiteral
+    | DateValueLiteral
+    | DateTimeLiteral
+    | BindVariable
+    | NullLiteral
+    | ValueExpr[] // for IN operator
 
 export type OrderByField = {
     field: FieldPath

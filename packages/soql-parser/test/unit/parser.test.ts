@@ -137,5 +137,32 @@ describe('SOQL Parsing', () => {
                 },
             })
         })
+
+        it('should support date literals in where clause', () => {
+            const soql = ' where CreatedDate >= LAST_N_DAYS:30 '
+            const where = new SoqlWhereClauseParser()
+
+            where.feed(soql)
+            where.eof = true
+
+            const whereClause = where.read()
+            console.log(JSON.stringify(whereClause, null, 2))
+            expect(whereClause).toEqual({
+                expr: {
+                    type: 'comparison',
+                    left: {
+                        parts: ['CreatedDate'],
+                    },
+                    operator: '>=',
+                    right: {
+                        type: 'dateLiteral',
+                        value: {
+                            type: 'LAST_N_DAYS',
+                            n: 30,
+                        },
+                    },
+                },
+            })
+        })
     })
 })
