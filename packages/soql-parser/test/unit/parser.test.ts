@@ -164,5 +164,49 @@ describe('SOQL Parsing', () => {
                 },
             })
         })
+
+        it('should support semi-join subqueries in where clause', () => {
+            const soql =
+                " where Id IN (SELECT UserId FROM Event WHERE Subject = 'Meeting') "
+            const where = new SoqlWhereClauseParser()
+
+            where.feed(soql)
+            where.eof = true
+
+            const whereClause = where.read()
+            console.log(JSON.stringify(whereClause, null, 2))
+            expect(whereClause).toEqual({
+                expr: {
+                    type: 'semiJoin',
+                    left: {
+                        parts: ['Id'],
+                    },
+                    operator: 'IN',
+                    subquery: {
+                        select: [
+                            {
+                                fieldName: {
+                                    parts: ['UserId'],
+                                },
+                            },
+                        ],
+                        from: 'Event',
+                        where: {
+                            expr: {
+                                type: 'comparison',
+                                left: {
+                                    parts: ['Subject'],
+                                },
+                                operator: '=',
+                                right: {
+                                    type: 'string',
+                                    value: 'Meeting',
+                                },
+                            },
+                        },
+                    },
+                },
+            })
+        })
     })
 })

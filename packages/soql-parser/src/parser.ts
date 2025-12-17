@@ -5,6 +5,8 @@ import {
     DATE_LITERALS,
     DATE_LITERALS_DYNAMIC,
     FieldSelect,
+    OPERATORS,
+    SoqlQuery,
     ValueExpr,
     WhereClause,
 } from './types'
@@ -34,6 +36,8 @@ const BYTE_MAP = {
     O: 0x4f,
     r: 0x72,
     R: 0x52,
+    s: 0x73,
+    S: 0x53,
 }
 
 /**
@@ -252,10 +256,21 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
         return expr
     }
 
-    private parseValueExpr(): ValueExpr {
+    private parseValueExpr(): ValueExpr | ValueExpr[] | SoqlQuery {
         this.skipWhitespace()
 
         if (this.buffer.peek() === BYTE_MAP.openParen) {
+            this.buffer.expect(BYTE_MAP.openParen) // consume '('
+            this.skipWhitespace()
+
+            if (
+                this.buffer.peek() === BYTE_MAP.s ||
+                this.buffer.peek() === BYTE_MAP.S
+            ) {
+                const soqlParser = new SoqlQueryParser(this.buffer)
+                return soqlParser.read()
+            }
+
             const values: ValueExpr[] = []
             while (this.buffer.peek() !== BYTE_MAP.closeParen) {
                 this.skipWhitespace()
@@ -277,17 +292,6 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
 
         this.skipWhitespace()
 
-        const operators = [
-            '=',
-            '!=',
-            '<',
-            '<=',
-            '>',
-            '>=',
-            'in',
-            'like',
-        ] as const
-
         let operator = ''
         while (
             this.buffer.peek() !== null &&
@@ -297,20 +301,31 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
             operator += String.fromCharCode(curr)
         }
 
-        if (!operators.includes(operator as any)) {
+        if (!OPERATORS.includes(operator as any)) {
             throw new SoqlParserError(
                 `Unrecognized operator in comparison expression: ${operator}`,
             )
         }
 
         this.skipWhitespace()
-        const rightExpr: ValueExpr = this.parseValueExpr()
+        const rightExpr = this.parseValueExpr()
+
+        if (
+            Array.isArray(rightExpr) ||
+            ('type' in rightExpr && rightExpr.type === 'soqlQuery')
+        ) {
+            if (operator !== 'in') {
+                throw new SoqlParserError(
+                    `Operator '${operator}' cannot be used with multiple values or subquery`,
+                )
+            }
+        }
 
         return {
             type: 'comparison',
             left: field.fieldName,
             operator: operator as any,
-            right: rightExpr,
+            right: rightExpr as ValueExpr,
         }
     }
 
@@ -416,5 +431,21 @@ export class SoqlSelectParser extends SoqlBaseParser<
         this.skipWhitespace()
 
         return new SoqlFieldSelectParser(this.buffer)
+    }
+}
+
+export class SoqlQueryParser extends SoqlBaseParser<
+    SoqlQuery,
+    SoqlWhereClauseParser
+> {
+    protected parse(): SoqlQuery {
+        throw new SoqlParserError('Not implemented yet')
+    }
+
+    next(): SoqlWhereClauseParser {
+        if (!this.consumed) {
+            this.read()
+        }
+        throw new SoqlParserError('No more query parts to parse') // TODO: support more query parts
     }
 }

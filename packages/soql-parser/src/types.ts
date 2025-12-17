@@ -53,17 +53,28 @@ export interface LogicalExpr {
     right: BooleanExpr
 }
 
+export const OPERATORS = [
+    '=',
+    '!=',
+    '<',
+    '<=',
+    '>',
+    '>=',
+    'in',
+    'like',
+] as const
+
 export interface ComparisonExpr {
     type: 'comparison'
-    operator: '=' | '!=' | '<' | '<=' | '>' | '>=' | 'in' | 'like'
+    operator: '=' | '!=' | '<' | '<=' | '>' | '>=' | 'like'
     left: FieldPath
     right: ValueExpr
 }
 
-export interface SemiJoinExpr {
-    type: 'semiJoin'
-    field: FieldPath
-    subquery: SoqlQuery
+export interface InExpr {
+    type: 'in'
+    left: FieldPath
+    right: ValueExpr[] | SoqlQuery // array of literals
 }
 
 export interface ParenExpr {
@@ -71,11 +82,7 @@ export interface ParenExpr {
     expr: BooleanExpr
 }
 
-export type BooleanExpr =
-    | LogicalExpr
-    | ComparisonExpr
-    | SemiJoinExpr
-    | ParenExpr
+export type BooleanExpr = LogicalExpr | ComparisonExpr | InExpr | ParenExpr
 
 export interface WhereClause {
     expr: BooleanExpr
@@ -189,7 +196,6 @@ export type ValueExpr =
     | DateTimeLiteral
     | BindVariable
     | NullLiteral
-    | ValueExpr[] // for IN operator
 
 export type OrderByField = {
     field: FieldPath
@@ -201,6 +207,7 @@ export interface OrderByClause {
 }
 
 export interface SoqlQuery {
+    type: 'soqlQuery'
     select: SelectClause
     from: FromClause
     where?: WhereClause
