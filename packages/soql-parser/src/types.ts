@@ -55,27 +55,9 @@ export interface LogicalExpr {
 
 export interface ComparisonExpr {
     type: 'comparison'
-    operator: '=' | '!=' | '<' | '<=' | '>' | '>='
+    operator: '=' | '!=' | '<' | '<=' | '>' | '>=' | 'in' | 'like'
     left: FieldPath
     right: ValueExpr
-}
-
-export interface InExpr {
-    type: 'in'
-    field: FieldPath
-    values: ValueExpr[]
-}
-
-export interface LikeExpr {
-    type: 'like'
-    field: FieldPath
-    pattern: string
-}
-
-export interface NullCheckExpr {
-    type: 'nullCheck'
-    field: FieldPath
-    isNull: boolean
 }
 
 export interface SemiJoinExpr {
@@ -92,9 +74,6 @@ export interface ParenExpr {
 export type BooleanExpr =
     | LogicalExpr
     | ComparisonExpr
-    | InExpr
-    | LikeExpr
-    | NullCheckExpr
     | SemiJoinExpr
     | ParenExpr
 
@@ -168,6 +147,7 @@ export type ValueExpr =
   | DateTimeLiteral
   | BindVariable
   | NullLiteral
+  | ValueExpr[] // for IN operator
 
 export type OrderByField = {
     field: FieldPath

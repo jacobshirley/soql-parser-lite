@@ -210,12 +210,12 @@ export class ByteBuffer {
      * @returns The consumed item cast to the expected type
      * @throws Error if the item doesn't match the expected type/value
      */
-    expect<T extends number>(itemType: T): T {
+    expect<T extends number>(...itemType: T[]): T {
         const item = this.next()
-        if (item !== itemType) {
-            throw new Error(`Expected ${itemType} but got ${item}`)
+        if (!itemType.includes(item as T)) {
+            throw new Error(`Expected one of ${itemType.join(', ')} but got ${item}`)
         }
-        return itemType
+        return item as T
     }
 
     /**
