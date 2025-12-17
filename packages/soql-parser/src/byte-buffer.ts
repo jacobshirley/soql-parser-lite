@@ -213,7 +213,9 @@ export class ByteBuffer {
     expect<T extends number>(...itemType: T[]): T {
         const item = this.next()
         if (!itemType.includes(item as T)) {
-            throw new Error(`Expected one of ${itemType.join(', ')} but got ${item}`)
+            throw new Error(
+                `Expected one of ${itemType.join(', ')} but got ${item}`,
+            )
         }
         return item as T
     }
