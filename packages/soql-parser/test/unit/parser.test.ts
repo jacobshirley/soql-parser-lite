@@ -185,7 +185,6 @@ describe('SOQL Parsing', () => {
             where.eof = true
 
             const whereClause = where.read()
-            console.log(JSON.stringify(whereClause, null, 2))
             expect(whereClause).toEqual({
                 expr: {
                     type: 'logical',
@@ -240,7 +239,6 @@ describe('SOQL Parsing', () => {
             where.eof = true
 
             const whereClause = where.read()
-            console.log(JSON.stringify(whereClause, null, 2))
             expect(whereClause).toEqual({
                 expr: {
                     type: 'logical',
@@ -300,7 +298,6 @@ describe('SOQL Parsing', () => {
             where.eof = true
 
             const whereClause = where.read()
-            console.log(JSON.stringify(whereClause, null, 2))
             expect(whereClause).toEqual({
                 expr: {
                     type: 'comparison',
@@ -328,7 +325,6 @@ describe('SOQL Parsing', () => {
             where.eof = true
 
             const whereClause = where.read()
-            console.log(JSON.stringify(whereClause, null, 2))
             expect(whereClause).toEqual({
                 expr: {
                     type: 'in',
