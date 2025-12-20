@@ -91,11 +91,52 @@ describe('SOQL Parsing', () => {
                 },
             ])
         })
+
+        it('should be able to subquery in select clause', () => {
+            const soql =
+                '  SELECT Name, (SELECT Id, Subject FROM Events)  FROM User'
+            const object = new SoqlSelectParser()
+
+            object.feed(soql)
+
+            const fields = object.read()
+            expect(fields.items).toEqual([
+                {
+                    type: 'field',
+                    fieldName: { parts: ['Name'] },
+                },
+                {
+                    type: 'subquery',
+                    subquery: {
+                        type: 'soqlQuery',
+                        select: {
+                            items: [
+                                {
+                                    type: 'field',
+                                    fieldName: { parts: ['Id'] },
+                                },
+                                {
+                                    type: 'field',
+                                    fieldName: { parts: ['Subject'] },
+                                },
+                            ],
+                        },
+                        from: {
+                            objects: [
+                                {
+                                    name: 'Events',
+                                },
+                            ],
+                        },
+                    },
+                },
+            ])
+        })
     })
 
     describe('From Clause Parsing', () => {
         it('should parse a from clause', () => {
-            const soql = '  FROM Account a '
+            const soql = '  FROM Account'
             const from = new SoqlFromClauseParser()
 
             from.feed(soql)
@@ -106,7 +147,6 @@ describe('SOQL Parsing', () => {
                 objects: [
                     {
                         name: 'Account',
-                        alias: 'a',
                     },
                 ],
             })

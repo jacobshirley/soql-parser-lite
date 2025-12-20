@@ -216,6 +216,14 @@ export abstract class SoqlBaseParser<
 
         return extractedWord
     }
+
+    protected readKeyword(): SoqlKeyword {
+        const word = this.readString().toUpperCase()
+        if (!SOQL_KEYWORDS.includes(word as any)) {
+            throw new SoqlParserError(`Expected SOQL keyword, got: ${word}`)
+        }
+        return word as SoqlKeyword
+    }
 }
 
 export class SoqlBooleanExprParser extends SoqlBaseParser<
@@ -478,19 +486,20 @@ export class SoqlFromObjectParser extends SoqlBaseParser<
         const objectName = this.readString()
 
         this.skipWhitespace()
-        const peekedString = this.peekString()
-        if (SOQL_KEYWORDS.includes(peekedString as any)) {
-            return {
-                name: objectName,
-            }
-        } else {
+        const peekedKeyword = this.peekKeyword()
+
+        const fromObject: FromObject = {
+            name: objectName,
+        }
+
+        if (!peekedKeyword) {
             // Alias detected
             const aliasString = this.readString()
-            return {
-                name: objectName,
-                alias: aliasString,
+            if (aliasString) {
+                fromObject.alias = aliasString
             }
         }
+        return fromObject
     }
 
     next():
@@ -807,11 +816,11 @@ export class SoqlOrderByClauseParser extends SoqlBaseParser<
             const field: FieldPath = { parts: fieldString.split('.') }
 
             this.skipWhitespace()
-            const directionString = this.peekString().toUpperCase()
+            const directionString = this.peekKeyword()
             let direction: 'ASC' | 'DESC' = 'ASC'
 
             if (directionString === 'ASC' || directionString === 'DESC') {
-                this.readString() // consume direction
+                this.readKeyword() // consume direction
                 direction = directionString as 'ASC' | 'DESC'
             }
 
@@ -932,6 +941,8 @@ export class SoqlSelectItemParser extends SoqlBaseParser<
 
             const queryParser = new SoqlQueryParser(this.buffer)
             const subquery = queryParser.read()
+            this.skipWhitespace()
+            this.buffer.expect(BYTE_MAP.closeParen)
 
             selectItem = {
                 type: 'subquery',
@@ -964,9 +975,9 @@ export class SoqlSelectItemParser extends SoqlBaseParser<
             }
 
             this.skipWhitespace()
-            const peekedString = this.peekString()
+            const peekedKeyword = this.peekKeyword()
 
-            if (!SOQL_KEYWORDS.includes(peekedString as any)) {
+            if (!peekedKeyword) {
                 // Alias detected
                 const aliasString = this.readString()
                 if (aliasString) selectItem.alias = aliasString
@@ -986,10 +997,10 @@ export class SoqlSelectItemParser extends SoqlBaseParser<
         if (this.buffer.peek() === BYTE_MAP.comma) {
             this.buffer.next() // consume comma or whitespace after field name
             return new SoqlSelectItemParser(this.buffer)
-        } else if (this.peekString().toUpperCase() === 'FROM') {
+        } else if (this.peekKeyword() === 'FROM') {
             return new SoqlFromClauseParser(this.buffer)
         } else {
-            throw new SoqlParserError('No more select items to parse') // TODO: support other options
+            throw new SoqlParserError('No more select items to parse')
         }
     }
 }
