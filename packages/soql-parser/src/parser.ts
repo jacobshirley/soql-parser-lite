@@ -6,9 +6,14 @@ import {
     DATE_LITERALS,
     DATE_LITERALS_DYNAMIC,
     FieldSelect,
+    FieldPath,
     FromClause,
     FromObject,
+    GroupByClause,
+    HavingClause,
     OPERATORS,
+    OrderByClause,
+    OrderByField,
     SelectClause,
     SelectItem,
     SoqlQuery,
@@ -59,6 +64,20 @@ const BYTE_MAP = {
     W: 0x57,
     h: 0x68,
     H: 0x48,
+    g: 0x67,
+    G: 0x47,
+    i: 0x69,
+    I: 0x49,
+    p: 0x70,
+    P: 0x50,
+    u: 0x75,
+    U: 0x55,
+    v: 0x76,
+    V: 0x56,
+    b: 0x62,
+    B: 0x42,
+    y: 0x79,
+    Y: 0x59,
 }
 
 const SOQL_KEYWORDS = [
@@ -88,7 +107,12 @@ const SOQL_KEYWORDS = [
     'NULLS',
     'USING',
     'WITH',
+    'ORDER',
+    'BY',
+    'OFFSET',
 ] as const
+
+export type SoqlKeyword = (typeof SOQL_KEYWORDS)[number]
 
 /**
  * Checks if a byte represents a whitespace character.
@@ -171,6 +195,14 @@ export abstract class SoqlBaseParser<
         return extractedWord
     }
 
+    protected peekKeyword(): SoqlKeyword | null {
+        const word = this.peekString().toUpperCase()
+        if (!word || !SOQL_KEYWORDS.includes(word as any)) {
+            return null
+        }
+        return word as SoqlKeyword
+    }
+
     protected readString(): string {
         this.skipWhitespace()
 
@@ -195,7 +227,7 @@ export abstract class SoqlBaseParser<
 
 export class SoqlBooleanExprParser extends SoqlBaseParser<
     BooleanExpr,
-    SoqlWhereClauseParser
+    SoqlBooleanExprParser
 > {
     protected parse(): BooleanExpr {
         this.skipWhitespace()
@@ -419,18 +451,24 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
         }
     }
 
-    next(): SoqlWhereClauseParser {
+    next(): SoqlBooleanExprParser {
         if (!this.consumed) {
             this.read()
         }
 
-        throw new SoqlParserError('No more boolean expressions to parse') // TODO: support multiple boolean expressions
+        return new SoqlBooleanExprParser(this.buffer)
     }
 }
 
 export class SoqlFromObjectParser extends SoqlBaseParser<
     FromObject,
-    SoqlFromObjectParser | SoqlWhereClauseParser | null
+    | SoqlFromObjectParser
+    | SoqlWhereClauseParser
+    | SoqlGroupByClauseParser
+    | SoqlOrderByClauseParser
+    | SoqlLimitClauseParser
+    | SoqlOffsetClauseParser
+    | null
 > {
     protected parse(): FromObject {
         this.skipWhitespace()
@@ -453,7 +491,14 @@ export class SoqlFromObjectParser extends SoqlBaseParser<
         }
     }
 
-    next(): SoqlFromObjectParser | SoqlWhereClauseParser | null {
+    next():
+        | SoqlFromObjectParser
+        | SoqlWhereClauseParser
+        | SoqlGroupByClauseParser
+        | SoqlOrderByClauseParser
+        | SoqlLimitClauseParser
+        | SoqlOffsetClauseParser
+        | null {
         if (!this.consumed) {
             this.read()
         }
@@ -461,18 +506,39 @@ export class SoqlFromObjectParser extends SoqlBaseParser<
         if (this.buffer.peek() === BYTE_MAP.comma) {
             this.buffer.next() // consume comma or whitespace after object name
             return new SoqlFromObjectParser(this.buffer)
-        } else if (this.peekString().toUpperCase() === 'WHERE') {
-            return new SoqlWhereClauseParser(this.buffer)
-        } else {
-            // TODO: support other clauses like ORDER BY, LIMIT, etc.
+        }
+
+        const peekedKeyword = this.peekKeyword()
+        if (!peekedKeyword) {
             return null
+        }
+
+        switch (peekedKeyword) {
+            case 'WHERE':
+                return new SoqlWhereClauseParser(this.buffer)
+            case 'GROUP':
+                return new SoqlGroupByClauseParser(this.buffer)
+            case 'ORDER':
+                return new SoqlOrderByClauseParser(this.buffer)
+            case 'LIMIT':
+                return new SoqlLimitClauseParser(this.buffer)
+            case 'OFFSET':
+                return new SoqlOffsetClauseParser(this.buffer)
+            default:
+                return null
         }
     }
 }
 
 export class SoqlFromClauseParser extends SoqlBaseParser<
     FromClause,
-    SoqlFromObjectParser | SoqlWhereClauseParser | null
+    | SoqlFromObjectParser
+    | SoqlWhereClauseParser
+    | SoqlGroupByClauseParser
+    | SoqlOrderByClauseParser
+    | SoqlLimitClauseParser
+    | SoqlOffsetClauseParser
+    | null
 > {
     protected parse(): FromClause {
         const next = this.next()
@@ -492,12 +558,33 @@ export class SoqlFromClauseParser extends SoqlBaseParser<
         return fromClause
     }
 
-    next(): SoqlFromObjectParser | SoqlWhereClauseParser | null {
+    next():
+        | SoqlFromObjectParser
+        | SoqlWhereClauseParser
+        | SoqlGroupByClauseParser
+        | SoqlOrderByClauseParser
+        | SoqlLimitClauseParser
+        | SoqlOffsetClauseParser
+        | null {
         if (this.consumed) {
-            if (this.peekString().toUpperCase() === 'WHERE') {
-                return new SoqlWhereClauseParser(this.buffer)
-            } else {
+            const peekedKeyword = this.peekKeyword()
+            if (!peekedKeyword) {
                 return null
+            }
+
+            switch (peekedKeyword) {
+                case 'WHERE':
+                    return new SoqlWhereClauseParser(this.buffer)
+                case 'GROUP':
+                    return new SoqlGroupByClauseParser(this.buffer)
+                case 'ORDER':
+                    return new SoqlOrderByClauseParser(this.buffer)
+                case 'LIMIT':
+                    return new SoqlLimitClauseParser(this.buffer)
+                case 'OFFSET':
+                    return new SoqlOffsetClauseParser(this.buffer)
+                default:
+                    return null
             }
         } else {
             this.skipWhitespace()
@@ -513,15 +600,49 @@ export class SoqlFromClauseParser extends SoqlBaseParser<
 
 export class SoqlWhereClauseParser extends SoqlBaseParser<
     WhereClause,
-    SoqlBooleanExprParser
+    | SoqlBooleanExprParser
+    | SoqlGroupByClauseParser
+    | SoqlOrderByClauseParser
+    | SoqlLimitClauseParser
+    | SoqlOffsetClauseParser
+    | null
 > {
     protected parse(): WhereClause {
+        const booleanExprParser = this.next()
+        if (!(booleanExprParser instanceof SoqlBooleanExprParser)) {
+            throw new SoqlParserError('Expected boolean expression parser')
+        }
         return {
-            expr: this.next().read(),
+            expr: booleanExprParser.read(),
         }
     }
 
-    next(): SoqlBooleanExprParser {
+    next():
+        | SoqlBooleanExprParser
+        | SoqlGroupByClauseParser
+        | SoqlOrderByClauseParser
+        | SoqlLimitClauseParser
+        | SoqlOffsetClauseParser
+        | null {
+        if (this.consumed) {
+            this.skipWhitespace()
+            const keyword = this.peekKeyword()
+            if (!keyword) return null
+
+            switch (keyword) {
+                case 'GROUP':
+                    return new SoqlGroupByClauseParser(this.buffer)
+                case 'ORDER':
+                    return new SoqlOrderByClauseParser(this.buffer)
+                case 'LIMIT':
+                    return new SoqlLimitClauseParser(this.buffer)
+                case 'OFFSET':
+                    return new SoqlOffsetClauseParser(this.buffer)
+                default:
+                    return null
+            }
+        }
+
         this.skipWhitespace()
 
         this.buffer.expect(BYTE_MAP.w, BYTE_MAP.W) // consume w
@@ -533,6 +654,249 @@ export class SoqlWhereClauseParser extends SoqlBaseParser<
         this.skipWhitespace()
 
         return new SoqlBooleanExprParser(this.buffer)
+    }
+}
+
+export class SoqlGroupByClauseParser extends SoqlBaseParser<
+    GroupByClause,
+    | SoqlHavingClauseParser
+    | SoqlOrderByClauseParser
+    | SoqlLimitClauseParser
+    | SoqlOffsetClauseParser
+    | null
+> {
+    protected parse(): GroupByClause {
+        this.skipWhitespace()
+
+        this.buffer.expect(BYTE_MAP.g, BYTE_MAP.G) // consume g
+        this.buffer.expect(BYTE_MAP.r, BYTE_MAP.R) // consume r
+        this.buffer.expect(BYTE_MAP.o, BYTE_MAP.O) // consume o
+        this.buffer.expect(BYTE_MAP.u, BYTE_MAP.U) // consume u
+        this.buffer.expect(BYTE_MAP.p, BYTE_MAP.P) // consume p
+        this.skipWhitespace()
+        this.buffer.expect(BYTE_MAP.b, BYTE_MAP.B) // consume b
+        this.buffer.expect(BYTE_MAP.y, BYTE_MAP.Y) // consume y
+        this.skipWhitespace()
+
+        const fields: FieldPath[] = []
+
+        while (true) {
+            const fieldString = this.readString()
+            fields.push({ parts: fieldString.split('.') })
+
+            this.skipWhitespace()
+            if (this.buffer.peek() === BYTE_MAP.comma) {
+                this.buffer.next() // consume comma
+                this.skipWhitespace()
+            } else {
+                break
+            }
+        }
+
+        return { fields }
+    }
+
+    next():
+        | SoqlHavingClauseParser
+        | SoqlOrderByClauseParser
+        | SoqlLimitClauseParser
+        | SoqlOffsetClauseParser
+        | null {
+        this.skipWhitespace()
+        const keyword = this.peekKeyword()
+        if (!keyword) return null
+
+        switch (keyword) {
+            case 'HAVING':
+                return new SoqlHavingClauseParser(this.buffer)
+            case 'ORDER':
+                return new SoqlOrderByClauseParser(this.buffer)
+            case 'LIMIT':
+                return new SoqlLimitClauseParser(this.buffer)
+            case 'OFFSET':
+                return new SoqlOffsetClauseParser(this.buffer)
+            default:
+                return null
+        }
+    }
+}
+
+export class SoqlHavingClauseParser extends SoqlBaseParser<
+    HavingClause,
+    | SoqlBooleanExprParser
+    | SoqlOrderByClauseParser
+    | SoqlLimitClauseParser
+    | SoqlOffsetClauseParser
+    | null
+> {
+    protected parse(): HavingClause {
+        const booleanExprParser = this.next()
+        if (!(booleanExprParser instanceof SoqlBooleanExprParser)) {
+            throw new SoqlParserError('Expected boolean expression parser')
+        }
+        return {
+            expr: booleanExprParser.read(),
+        }
+    }
+
+    next():
+        | SoqlBooleanExprParser
+        | SoqlOrderByClauseParser
+        | SoqlLimitClauseParser
+        | SoqlOffsetClauseParser
+        | null {
+        if (this.consumed) {
+            this.skipWhitespace()
+            const keyword = this.peekKeyword()
+            if (!keyword) return null
+
+            switch (keyword) {
+                case 'ORDER':
+                    return new SoqlOrderByClauseParser(this.buffer)
+                case 'LIMIT':
+                    return new SoqlLimitClauseParser(this.buffer)
+                case 'OFFSET':
+                    return new SoqlOffsetClauseParser(this.buffer)
+                default:
+                    return null
+            }
+        }
+
+        this.skipWhitespace()
+
+        this.buffer.expect(BYTE_MAP.h, BYTE_MAP.H) // consume h
+        this.buffer.expect(BYTE_MAP.a, BYTE_MAP.A) // consume a
+        this.buffer.expect(BYTE_MAP.v, BYTE_MAP.V) // consume v
+        this.buffer.expect(BYTE_MAP.i, BYTE_MAP.I) // consume i
+        this.buffer.expect(BYTE_MAP.n, BYTE_MAP.N) // consume n
+        this.buffer.expect(BYTE_MAP.g, BYTE_MAP.G) // consume g
+
+        this.skipWhitespace()
+
+        return new SoqlBooleanExprParser(this.buffer)
+    }
+}
+
+export class SoqlOrderByClauseParser extends SoqlBaseParser<
+    OrderByClause,
+    SoqlLimitClauseParser | SoqlOffsetClauseParser | null
+> {
+    protected parse(): OrderByClause {
+        this.skipWhitespace()
+
+        this.buffer.expect(BYTE_MAP.o, BYTE_MAP.O) // consume o
+        this.buffer.expect(BYTE_MAP.r, BYTE_MAP.R) // consume r
+        this.buffer.expect(BYTE_MAP.d, BYTE_MAP.D) // consume d
+        this.buffer.expect(BYTE_MAP.e, BYTE_MAP.E) // consume e
+        this.buffer.expect(BYTE_MAP.r, BYTE_MAP.R) // consume r
+        this.skipWhitespace()
+        this.buffer.expect(BYTE_MAP.b, BYTE_MAP.B) // consume b
+        this.buffer.expect(BYTE_MAP.y, BYTE_MAP.Y) // consume y
+        this.skipWhitespace()
+
+        const fields: OrderByField[] = []
+
+        while (true) {
+            const fieldString = this.readString()
+            const field: FieldPath = { parts: fieldString.split('.') }
+
+            this.skipWhitespace()
+            const directionString = this.peekString().toUpperCase()
+            let direction: 'ASC' | 'DESC' = 'ASC'
+
+            if (directionString === 'ASC' || directionString === 'DESC') {
+                this.readString() // consume direction
+                direction = directionString as 'ASC' | 'DESC'
+            }
+
+            fields.push({ field, direction })
+
+            this.skipWhitespace()
+            if (this.buffer.peek() === BYTE_MAP.comma) {
+                this.buffer.next() // consume comma
+                this.skipWhitespace()
+            } else {
+                break
+            }
+        }
+
+        return { fields }
+    }
+
+    next(): SoqlLimitClauseParser | SoqlOffsetClauseParser | null {
+        this.skipWhitespace()
+        const keyword = this.peekKeyword()
+        if (!keyword) return null
+
+        switch (keyword) {
+            case 'LIMIT':
+                return new SoqlLimitClauseParser(this.buffer)
+            case 'OFFSET':
+                return new SoqlOffsetClauseParser(this.buffer)
+            default:
+                return null
+        }
+    }
+}
+
+export class SoqlLimitClauseParser extends SoqlBaseParser<
+    number,
+    SoqlOffsetClauseParser | null
+> {
+    protected parse(): number {
+        this.skipWhitespace()
+
+        this.buffer.expect(BYTE_MAP.l, BYTE_MAP.L) // consume l
+        this.buffer.expect(BYTE_MAP.i, BYTE_MAP.I) // consume i
+        this.buffer.expect(BYTE_MAP.m, BYTE_MAP.M) // consume m
+        this.buffer.expect(BYTE_MAP.i, BYTE_MAP.I) // consume i
+        this.buffer.expect(BYTE_MAP.t, BYTE_MAP.T) // consume t
+        this.skipWhitespace()
+
+        const limitString = this.readString()
+        const limit = Number(limitString)
+
+        if (isNaN(limit)) {
+            throw new SoqlParserError(`Invalid LIMIT value: ${limitString}`)
+        }
+
+        return limit
+    }
+
+    next(): SoqlOffsetClauseParser | null {
+        this.skipWhitespace()
+        const keyword = this.peekKeyword()
+        if (keyword === 'OFFSET') {
+            return new SoqlOffsetClauseParser(this.buffer)
+        }
+        return null
+    }
+}
+
+export class SoqlOffsetClauseParser extends SoqlBaseParser<number, null> {
+    protected parse(): number {
+        this.skipWhitespace()
+
+        this.buffer.expect(BYTE_MAP.o, BYTE_MAP.O) // consume o
+        this.buffer.expect(BYTE_MAP.f, BYTE_MAP.F) // consume f
+        this.buffer.expect(BYTE_MAP.f, BYTE_MAP.F) // consume f
+        this.buffer.expect(BYTE_MAP.s, BYTE_MAP.S) // consume s
+        this.buffer.expect(BYTE_MAP.e, BYTE_MAP.E) // consume e
+        this.buffer.expect(BYTE_MAP.t, BYTE_MAP.T) // consume t
+        this.skipWhitespace()
+
+        const offsetString = this.readString()
+        const offset = Number(offsetString)
+
+        if (isNaN(offset)) {
+            throw new SoqlParserError(`Invalid OFFSET value: ${offsetString}`)
+        }
+
+        return offset
+    }
+
+    next(): null {
+        return null
     }
 }
 
@@ -674,12 +1038,43 @@ export class SoqlQueryParser extends SoqlBaseParser<
         }
 
         const fromClause = next.read()
-
         next = next.next()
 
         let where: WhereClause | undefined = undefined
+        let groupBy: GroupByClause | undefined = undefined
+        let having: HavingClause | undefined = undefined
+        let orderBy: OrderByClause | undefined = undefined
+        let limit: number | undefined = undefined
+        let offset: number | undefined = undefined
+
+        // Process optional clauses using parser chaining
         if (next instanceof SoqlWhereClauseParser) {
             where = next.read()
+            next = next.next()
+        }
+
+        if (next instanceof SoqlGroupByClauseParser) {
+            groupBy = next.read()
+            next = next.next()
+        }
+
+        if (next instanceof SoqlHavingClauseParser) {
+            having = next.read()
+            next = next.next()
+        }
+
+        if (next instanceof SoqlOrderByClauseParser) {
+            orderBy = next.read()
+            next = next.next()
+        }
+
+        if (next instanceof SoqlLimitClauseParser) {
+            limit = next.read()
+            next = next.next()
+        }
+
+        if (next instanceof SoqlOffsetClauseParser) {
+            offset = next.read()
         }
 
         return {
@@ -687,6 +1082,11 @@ export class SoqlQueryParser extends SoqlBaseParser<
             select: select,
             from: fromClause,
             where: where,
+            groupBy: groupBy,
+            having: having,
+            orderBy: orderBy,
+            limit: limit,
+            offset: offset,
         }
     }
 

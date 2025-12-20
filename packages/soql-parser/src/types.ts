@@ -96,6 +96,10 @@ export interface GroupByClause {
     rollup?: boolean
 }
 
+export interface HavingClause {
+    expr: BooleanExpr
+}
+
 export interface StringLiteral {
     type: 'string'
     value: string
@@ -215,6 +219,7 @@ export interface SoqlQuery {
     from: FromClause
     where?: WhereClause
     groupBy?: GroupByClause
+    having?: HavingClause
     orderBy?: OrderByClause
     limit?: number
     offset?: number

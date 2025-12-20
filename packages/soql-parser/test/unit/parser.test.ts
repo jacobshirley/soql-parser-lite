@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest'
 import {
     FieldSelect,
     SoqlFromClauseParser,
+    SoqlGroupByClauseParser,
+    SoqlOrderByClauseParser,
+    SoqlLimitClauseParser,
+    SoqlOffsetClauseParser,
+    SoqlQueryParser,
     SoqlSelectParser,
     SoqlWhereClauseParser,
     WhereClause,
@@ -325,6 +330,97 @@ describe('SOQL Parsing', () => {
                     },
                 },
             } satisfies WhereClause)
+        })
+    })
+
+    describe('Group By Clause Parsing', () => {
+        it('should parse a group by clause', () => {
+            const soql = '  GROUP BY Name, Age, Sub.Field  '
+            const object = new SoqlGroupByClauseParser()
+
+            object.feed(soql)
+            object.eof = true
+
+            const groupBy = object.read()
+            expect(groupBy.fields.map((x) => x.parts.join('.'))).toEqual([
+                'Name',
+                'Age',
+                'Sub.Field',
+            ])
+        })
+    })
+
+    describe('Order By Clause Parsing', () => {
+        it('should parse an order by clause', () => {
+            const soql = '  ORDER BY Name ASC, Age DESC, Sub.Field  '
+            const object = new SoqlOrderByClauseParser()
+
+            object.feed(soql)
+            object.eof = true
+
+            const orderBy = object.read()
+            expect(orderBy.fields).toEqual([
+                {
+                    field: { parts: ['Name'] },
+                    direction: 'ASC',
+                },
+                {
+                    field: { parts: ['Age'] },
+                    direction: 'DESC',
+                },
+                {
+                    field: { parts: ['Sub', 'Field'] },
+                    direction: 'ASC',
+                },
+            ])
+        })
+    })
+
+    describe('Limit Clause Parsing', () => {
+        it('should parse a limit clause', () => {
+            const soql = '  LIMIT 100  '
+            const object = new SoqlLimitClauseParser()
+
+            object.feed(soql)
+            object.eof = true
+
+            const limit = object.read()
+            expect(limit).toBe(100)
+        })
+    })
+
+    describe('Offset Clause Parsing', () => {
+        it('should parse an offset clause', () => {
+            const soql = '  OFFSET 50  '
+            const object = new SoqlOffsetClauseParser()
+
+            object.feed(soql)
+            object.eof = true
+
+            const offset = object.read()
+            expect(offset).toBe(50)
+        })
+    })
+
+    describe('Full SOQL Query Parsing', () => {
+        it('should parse a complete SOQL query with all clauses', () => {
+            const soql =
+                'SELECT Name, COUNT(Id) cnt FROM Account WHERE IsActive = true GROUP BY Name ORDER BY Name ASC LIMIT 10 OFFSET 5'
+            const object = new SoqlQueryParser()
+
+            object.feed(soql)
+            object.eof = true
+
+            const query = object.read()
+            expect(query.select.items.length).toBe(2)
+            expect(query.from.objects[0].name).toBe('Account')
+            expect(query.where).toBeDefined()
+            expect(query.groupBy).toBeDefined()
+            expect(query.groupBy?.fields.length).toBe(1)
+            expect(query.orderBy).toBeDefined()
+            expect(query.orderBy?.fields.length).toBe(1)
+            expect(query.limit).toBe(10)
+            expect(query.offset).toBe(5)
         })
     })
 })
