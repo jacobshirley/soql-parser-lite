@@ -422,5 +422,81 @@ describe('SOQL Parsing', () => {
             expect(query.limit).toBe(10)
             expect(query.offset).toBe(5)
         })
+
+        it('should chain next() calls until null for complete query', () => {
+            const soql = 'SELECT Name FROM Account'
+            const queryParser = new SoqlQueryParser()
+
+            queryParser.feed(soql)
+            queryParser.eof = true
+
+            // Start with SELECT
+            const selectParser = queryParser.next()
+            expect(selectParser).toBeInstanceOf(SoqlSelectParser)
+            selectParser.read()
+
+            // Move to FROM
+            const fromParser = selectParser.next()
+            expect(fromParser).toBeInstanceOf(SoqlFromClauseParser)
+            fromParser.read()
+
+            // FROM should be terminal for this query - next() returns null
+            const next = fromParser.next()
+            expect(next).toBeNull()
+        })
+
+        it('should chain through multiple parsers and eventually return null', () => {
+            const soql = 'SELECT Name FROM Account LIMIT 10 OFFSET 5'
+            const queryParser = new SoqlQueryParser()
+
+            queryParser.feed(soql)
+            queryParser.eof = true
+
+            // Start with SELECT
+            const selectParser = queryParser.next()
+            expect(selectParser).toBeInstanceOf(SoqlSelectParser)
+            selectParser.read()
+
+            // Move to FROM
+            const fromParser = selectParser.next()
+            expect(fromParser).toBeInstanceOf(SoqlFromClauseParser)
+            fromParser.read()
+
+            // Move to LIMIT
+            let next = fromParser.next()
+            expect(next).toBeInstanceOf(SoqlLimitClauseParser)
+            next.read()
+
+            // Move to OFFSET
+            next = next.next()
+            expect(next).toBeInstanceOf(SoqlOffsetClauseParser)
+            next.read()
+
+            // OFFSET should be terminal - next() returns null
+            next = next.next()
+            expect(next).toBeNull()
+        })
+
+        it('should return null when no more clauses exist', () => {
+            const soql = 'SELECT Name FROM Account WHERE IsActive = true'
+            const queryParser = new SoqlQueryParser()
+
+            queryParser.feed(soql)
+            queryParser.eof = true
+
+            const selectParser = queryParser.next()
+            selectParser.read()
+
+            const fromParser = selectParser.next()
+            fromParser.read()
+
+            const whereParser = fromParser.next()
+            expect(whereParser).toBeInstanceOf(SoqlWhereClauseParser)
+            whereParser!.read()
+
+            // After WHERE with no more clauses, next() should return null
+            const next = whereParser!.next()
+            expect(next).toBeNull()
+        })
     })
 })

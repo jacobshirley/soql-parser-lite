@@ -702,6 +702,10 @@ export class SoqlGroupByClauseParser extends SoqlBaseParser<
         | SoqlLimitClauseParser
         | SoqlOffsetClauseParser
         | null {
+        if (!this.consumed) {
+            this.read()
+        }
+
         this.skipWhitespace()
         const keyword = this.peekKeyword()
         if (!keyword) return null
@@ -824,6 +828,10 @@ export class SoqlOrderByClauseParser extends SoqlBaseParser<
     }
 
     next(): SoqlLimitClauseParser | SoqlOffsetClauseParser | null {
+        if (!this.consumed) {
+            this.read()
+        }
+
         this.skipWhitespace()
         const keyword = this.peekKeyword()
         if (!keyword) return null
@@ -864,6 +872,9 @@ export class SoqlLimitClauseParser extends SoqlBaseParser<
     }
 
     next(): SoqlOffsetClauseParser | null {
+        if (!this.consumed) {
+            this.read()
+        }
         this.skipWhitespace()
         const keyword = this.peekKeyword()
         if (keyword === 'OFFSET') {
@@ -896,6 +907,9 @@ export class SoqlOffsetClauseParser extends SoqlBaseParser<number, null> {
     }
 
     next(): null {
+        if (!this.consumed) {
+            this.read()
+        }
         return null
     }
 }
