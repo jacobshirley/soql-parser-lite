@@ -403,9 +403,26 @@ describe('SOQL Parsing', () => {
     })
 
     describe('Full SOQL Query Parsing', () => {
+        it('should parse a query with GROUP BY and HAVING', () => {
+            const soql =
+                'SELECT Name FROM Account GROUP BY Name HAVING Name != null'
+            const object = new SoqlQueryParser()
+
+            object.feed(soql)
+            object.eof = true
+
+            const query = object.read()
+            expect(query.select.items.length).toBe(1)
+            expect(query.from.objects[0].name).toBe('Account')
+            expect(query.groupBy).toBeDefined()
+            expect(query.groupBy?.fields.length).toBe(1)
+            expect(query.having).toBeDefined()
+            expect(query.having?.expr.type).toBe('comparison')
+        })
+
         it('should parse a complete SOQL query with all clauses', () => {
             const soql =
-                'SELECT Name, COUNT(Id) cnt FROM Account WHERE IsActive = true GROUP BY Name ORDER BY Name ASC LIMIT 10 OFFSET 5'
+                'SELECT Name, COUNT(Id) cnt FROM Account WHERE IsActive = true GROUP BY Name HAVING Name != null ORDER BY Name ASC LIMIT 10 OFFSET 5'
             const object = new SoqlQueryParser()
 
             object.feed(soql)
@@ -417,10 +434,84 @@ describe('SOQL Parsing', () => {
             expect(query.where).toBeDefined()
             expect(query.groupBy).toBeDefined()
             expect(query.groupBy?.fields.length).toBe(1)
+            expect(query.having).toBeDefined()
             expect(query.orderBy).toBeDefined()
             expect(query.orderBy?.fields.length).toBe(1)
             expect(query.limit).toBe(10)
             expect(query.offset).toBe(5)
+            expect(query).toEqual({
+                from: {
+                    objects: [
+                        {
+                            name: 'Account',
+                        },
+                    ],
+                },
+                groupBy: {
+                    fields: [
+                        {
+                            parts: ['Name'],
+                        },
+                    ],
+                },
+                having: {
+                    expr: {
+                        left: {
+                            parts: ['Name'],
+                        },
+                        operator: '!=',
+                        right: {
+                            type: 'null',
+                            value: null,
+                        },
+                        type: 'comparison',
+                    },
+                },
+                limit: 10,
+                offset: 5,
+                orderBy: {
+                    fields: [
+                        {
+                            direction: 'ASC',
+                            field: {
+                                parts: ['Name'],
+                            },
+                        },
+                    ],
+                },
+                select: {
+                    items: [
+                        {
+                            fieldName: {
+                                parts: ['Name'],
+                            },
+                            type: 'field',
+                        },
+                        {
+                            alias: 'cnt',
+                            fieldName: {
+                                parts: ['Id'],
+                            },
+                            functionName: 'COUNT',
+                            type: 'aggregate',
+                        },
+                    ],
+                },
+                type: 'soqlQuery',
+                where: {
+                    expr: {
+                        left: {
+                            parts: ['IsActive'],
+                        },
+                        operator: '=',
+                        right: {
+                            type: 'boolean',
+                            value: true,
+                        },
+                        type: 'comparison',
+                    },
+                },
+            })
         })
 
         it('should chain next() calls until null for complete query', () => {

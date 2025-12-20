@@ -242,10 +242,18 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
 
         this.skipWhitespace()
 
-        const nextByte = this.buffer.peek()
-        if (nextByte === null) {
+        // Check if next word is a SOQL keyword - if so, stop parsing
+        const peekedKeyword = this.peekKeyword()
+        if (
+            peekedKeyword &&
+            ['GROUP', 'HAVING', 'ORDER', 'LIMIT', 'OFFSET'].includes(
+                peekedKeyword,
+            )
+        ) {
             return left
-        } else if (nextByte === BYTE_MAP.a || nextByte === BYTE_MAP.A) {
+        }
+
+        if (peekedKeyword === 'AND') {
             // Expecting AND
             this.buffer.expect(BYTE_MAP.a, BYTE_MAP.A) // consume 'a'
             this.buffer.expect(BYTE_MAP.n, BYTE_MAP.N) // consume 'n'
@@ -260,11 +268,12 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
                 left: left,
                 right: right,
             }
-        } else if (nextByte === BYTE_MAP.o || nextByte === BYTE_MAP.O) {
+        } else if (peekedKeyword === 'OR') {
             // Expecting OR
             this.buffer.expect(BYTE_MAP.o, BYTE_MAP.O) // consume 'o'
             this.buffer.expect(BYTE_MAP.r, BYTE_MAP.R) // consume 'r'
             this.skipWhitespace()
+
             const rightParser = new SoqlBooleanExprParser(this.buffer)
             const right = rightParser.read()
 
