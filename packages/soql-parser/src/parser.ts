@@ -1,6 +1,6 @@
 import { ByteBuffer } from './byte-buffer'
+import { SoqlParserError } from './errors'
 import {
-    AggregateSelect,
     BooleanExpr,
     ByteStream,
     DATE_LITERALS,
@@ -20,13 +20,6 @@ import {
     ValueExpr,
     WhereClause,
 } from './types'
-
-export class SoqlParserError extends Error {
-    constructor(message: string) {
-        super(`SOQL Parser Error: ${message}`)
-        this.name = 'SoqlParserError'
-    }
-}
 
 const BYTE_MAP = {
     space: 0x20,
