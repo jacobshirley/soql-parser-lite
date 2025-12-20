@@ -34,16 +34,19 @@ export interface AggregateSelect {
 export interface SubquerySelect {
     type: 'subquery'
     subquery: SoqlQuery
-    alias: string
 }
 
 export type SelectItem = FieldSelect | AggregateSelect | SubquerySelect
 
 export type ObjectName = string //TODO: more complex object names with namespaces?
 
-export interface FromClause {
-    object: ObjectName
+export interface FromObject {
+    name: ObjectName
     alias?: string
+}
+
+export interface FromClause {
+    objects: FromObject[]
 }
 
 export interface LogicalExpr {

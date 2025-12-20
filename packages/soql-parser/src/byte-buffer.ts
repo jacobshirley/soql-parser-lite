@@ -214,7 +214,7 @@ export class ByteBuffer {
         const item = this.next()
         if (!itemType.includes(item as T)) {
             throw new Error(
-                `Expected one of ${itemType.join(', ')} but got ${item}`,
+                `Expected one of ${itemType.join(', ')} but got ${item} (${String.fromCharCode(item)})`,
             )
         }
         return item as T

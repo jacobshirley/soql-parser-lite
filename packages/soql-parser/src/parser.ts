@@ -1,11 +1,16 @@
 import { ByteBuffer } from './byte-buffer'
 import {
+    AggregateSelect,
     BooleanExpr,
     ByteStream,
     DATE_LITERALS,
     DATE_LITERALS_DYNAMIC,
     FieldSelect,
+    FromClause,
+    FromObject,
     OPERATORS,
+    SelectClause,
+    SelectItem,
     SoqlQuery,
     ValueExpr,
     WhereClause,
@@ -38,7 +43,52 @@ const BYTE_MAP = {
     R: 0x52,
     s: 0x73,
     S: 0x53,
+    f: 0x66,
+    F: 0x46,
+    m: 0x6d,
+    M: 0x4d,
+    t: 0x74,
+    T: 0x54,
+    e: 0x65,
+    E: 0x45,
+    l: 0x6c,
+    L: 0x4c,
+    c: 0x63,
+    C: 0x43,
+    w: 0x77,
+    W: 0x57,
+    h: 0x68,
+    H: 0x48,
 }
+
+const SOQL_KEYWORDS = [
+    'SELECT',
+    'FROM',
+    'WHERE',
+    'AND',
+    'OR',
+    'IN',
+    'LIKE',
+    'COUNT',
+    'MAX',
+    'MIN',
+    'SUM',
+    'AVG',
+    'ASC',
+    'DESC',
+    'EXCLUDES',
+    'FIRST',
+    'GROUP',
+    'HAVING',
+    'INCLUDES',
+    'LAST',
+    'LIMIT',
+    'NOT',
+    'NULL',
+    'NULLS',
+    'USING',
+    'WITH',
+] as const
 
 /**
  * Checks if a byte represents a whitespace character.
@@ -57,7 +107,7 @@ const isWhitespace = (byte: number | null): boolean => {
 
 export abstract class SoqlBaseParser<
     T = unknown,
-    Next extends SoqlBaseParser = SoqlBaseParser<unknown, any>,
+    Next extends SoqlBaseParser | null = SoqlBaseParser<unknown, any> | null,
 > {
     consumed: boolean = false
     protected buffer: ByteBuffer
@@ -83,8 +133,9 @@ export abstract class SoqlBaseParser<
         if (this.consumed) {
             throw new SoqlParserError('Parser has already been consumed')
         }
+        const parsed = this.parse()
         this.consumed = true
-        return this.parse()
+        return parsed
     }
 
     protected abstract parse(): T
@@ -98,6 +149,47 @@ export abstract class SoqlBaseParser<
         while (isWhitespace(this.buffer.peek())) {
             this.buffer.next()
         }
+    }
+
+    protected peekString(): string {
+        this.skipWhitespace()
+
+        let extractedWord = ''
+        let offset = 0
+        let currByte = this.buffer.peek(offset)
+
+        while (
+            currByte !== null &&
+            !isWhitespace(currByte) &&
+            currByte !== BYTE_MAP.comma
+        ) {
+            extractedWord += String.fromCharCode(currByte)
+            offset++
+            currByte = this.buffer.peek(offset)
+        }
+
+        return extractedWord
+    }
+
+    protected readString(): string {
+        this.skipWhitespace()
+
+        let extractedWord = ''
+        let currByte = this.buffer.peek()
+
+        while (
+            currByte !== null &&
+            !isWhitespace(currByte) &&
+            currByte !== BYTE_MAP.comma &&
+            currByte !== BYTE_MAP.openParen &&
+            currByte !== BYTE_MAP.closeParen
+        ) {
+            extractedWord += String.fromCharCode(currByte)
+            this.buffer.next()
+            currByte = this.buffer.peek()
+        }
+
+        return extractedWord
     }
 }
 
@@ -172,15 +264,7 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
     }
 
     private parseSingleValueExpr(): ValueExpr {
-        let valueString = ''
-
-        while (
-            !isWhitespace(this.buffer.peek()) &&
-            this.buffer.peek() !== BYTE_MAP.closeParen
-        ) {
-            const curr = this.buffer.next()
-            valueString += String.fromCharCode(curr)
-        }
+        const valueString = this.readString()
 
         let expr: ValueExpr
         if (valueString.startsWith("'") && valueString.endsWith("'")) {
@@ -267,6 +351,7 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
                 this.buffer.peek() === BYTE_MAP.s ||
                 this.buffer.peek() === BYTE_MAP.S
             ) {
+                // Subquery
                 const soqlParser = new SoqlQueryParser(this.buffer)
                 return soqlParser.read()
             }
@@ -287,21 +372,18 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
     }
 
     private parseComparisonExpr(): BooleanExpr {
-        const fieldParser = new SoqlFieldSelectParser(this.buffer)
-        const field = fieldParser.read()
+        const fieldString = this.readString()
+        const field: FieldSelect = {
+            type: 'field',
+            fieldName: { parts: fieldString.split('.') },
+        }
 
         this.skipWhitespace()
 
-        let operator = ''
-        while (
-            this.buffer.peek() !== null &&
-            !isWhitespace(this.buffer.peek())
-        ) {
-            const curr = this.buffer.next()
-            operator += String.fromCharCode(curr)
-        }
+        const operator =
+            this.readString().toLowerCase() as (typeof OPERATORS)[number]
 
-        if (!OPERATORS.includes(operator as any)) {
+        if (!OPERATORS.includes(operator)) {
             throw new SoqlParserError(
                 `Unrecognized operator in comparison expression: ${operator}`,
             )
@@ -321,10 +403,18 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
             }
         }
 
+        if (operator === 'in') {
+            return {
+                type: 'in',
+                left: field.fieldName,
+                right: rightExpr as ValueExpr[] | SoqlQuery,
+            }
+        }
+
         return {
             type: 'comparison',
             left: field.fieldName,
-            operator: operator as any,
+            operator: operator,
             right: rightExpr as ValueExpr,
         }
     }
@@ -335,6 +425,89 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
         }
 
         throw new SoqlParserError('No more boolean expressions to parse') // TODO: support multiple boolean expressions
+    }
+}
+
+export class SoqlFromObjectParser extends SoqlBaseParser<
+    FromObject,
+    SoqlFromObjectParser | SoqlWhereClauseParser | null
+> {
+    protected parse(): FromObject {
+        this.skipWhitespace()
+
+        const objectName = this.readString()
+
+        this.skipWhitespace()
+        const peekedString = this.peekString()
+        if (SOQL_KEYWORDS.includes(peekedString as any)) {
+            return {
+                name: objectName,
+            }
+        } else {
+            // Alias detected
+            const aliasString = this.readString()
+            return {
+                name: objectName,
+                alias: aliasString,
+            }
+        }
+    }
+
+    next(): SoqlFromObjectParser | SoqlWhereClauseParser | null {
+        if (!this.consumed) {
+            this.read()
+        }
+
+        if (this.buffer.peek() === BYTE_MAP.comma) {
+            this.buffer.next() // consume comma or whitespace after object name
+            return new SoqlFromObjectParser(this.buffer)
+        } else if (this.peekString().toUpperCase() === 'WHERE') {
+            return new SoqlWhereClauseParser(this.buffer)
+        } else {
+            // TODO: support other clauses like ORDER BY, LIMIT, etc.
+            return null
+        }
+    }
+}
+
+export class SoqlFromClauseParser extends SoqlBaseParser<
+    FromClause,
+    SoqlFromObjectParser | SoqlWhereClauseParser | null
+> {
+    protected parse(): FromClause {
+        const next = this.next()
+        const objects: FromObject[] = []
+
+        let currentParser: SoqlBaseParser | null = next
+        while (currentParser instanceof SoqlFromObjectParser) {
+            const fromObject = currentParser.read()
+            objects.push(fromObject)
+            currentParser = currentParser.next()
+        }
+
+        const fromClause: FromClause = {
+            objects: objects,
+        }
+
+        return fromClause
+    }
+
+    next(): SoqlFromObjectParser | SoqlWhereClauseParser | null {
+        if (this.consumed) {
+            if (this.peekString().toUpperCase() === 'WHERE') {
+                return new SoqlWhereClauseParser(this.buffer)
+            } else {
+                return null
+            }
+        } else {
+            this.skipWhitespace()
+            this.buffer.expect(BYTE_MAP.f, BYTE_MAP.F) // consume f
+            this.buffer.expect(BYTE_MAP.r, BYTE_MAP.R) // consume r
+            this.buffer.expect(BYTE_MAP.o, BYTE_MAP.O) // consume o
+            this.buffer.expect(BYTE_MAP.m, BYTE_MAP.M) // consume m
+
+            return new SoqlFromObjectParser(this.buffer)
+        }
     }
 }
 
@@ -351,11 +524,11 @@ export class SoqlWhereClauseParser extends SoqlBaseParser<
     next(): SoqlBooleanExprParser {
         this.skipWhitespace()
 
-        this.buffer.next() // consume w
-        this.buffer.next() // consume h
-        this.buffer.next() // consume e
-        this.buffer.next() // consume r
-        this.buffer.next() // consume e
+        this.buffer.expect(BYTE_MAP.w, BYTE_MAP.W) // consume w
+        this.buffer.expect(BYTE_MAP.h, BYTE_MAP.H) // consume h
+        this.buffer.expect(BYTE_MAP.e, BYTE_MAP.E) // consume e
+        this.buffer.expect(BYTE_MAP.r, BYTE_MAP.R) // consume r
+        this.buffer.expect(BYTE_MAP.e, BYTE_MAP.E) // consume e
 
         this.skipWhitespace()
 
@@ -363,89 +536,161 @@ export class SoqlWhereClauseParser extends SoqlBaseParser<
     }
 }
 
-export class SoqlFieldSelectParser extends SoqlBaseParser<
-    FieldSelect,
-    SoqlFieldSelectParser
+export class SoqlSelectItemParser extends SoqlBaseParser<
+    SelectItem,
+    SoqlSelectItemParser | SoqlFromClauseParser
 > {
-    protected parse(): FieldSelect {
+    protected parse(): SelectItem {
+        let selectItem: SelectItem
+
         this.skipWhitespace()
 
-        let fieldString = ''
-        while (
-            this.buffer.peek() !== BYTE_MAP.comma &&
-            !isWhitespace(this.buffer.peek())
-        ) {
-            const curr = this.buffer.next()
-            fieldString += String.fromCharCode(curr)
+        const nextByte = this.buffer.peek()
+        if (nextByte === BYTE_MAP.openParen) {
+            // Subquery
+            this.buffer.expect(BYTE_MAP.openParen)
+
+            const queryParser = new SoqlQueryParser(this.buffer)
+            const subquery = queryParser.read()
+
+            selectItem = {
+                type: 'subquery',
+                subquery: subquery,
+            }
+        } else {
+            const string1 = this.readString()
+
+            if (this.buffer.peek() === BYTE_MAP.openParen) {
+                // Aggregate function
+
+                const functionName = string1.toUpperCase().trim()
+                this.buffer.expect(BYTE_MAP.openParen)
+                const argumentString = this.readString()
+                this.buffer.expect(BYTE_MAP.closeParen)
+
+                selectItem = {
+                    type: 'aggregate',
+                    functionName: functionName,
+                    fieldName: {
+                        parts: argumentString.split('.'),
+                    },
+                }
+            } else {
+                // Regular field select
+                selectItem = {
+                    type: 'field',
+                    fieldName: { parts: string1.split('.') },
+                }
+            }
+
+            this.skipWhitespace()
+            const peekedString = this.peekString()
+
+            if (!SOQL_KEYWORDS.includes(peekedString as any)) {
+                // Alias detected
+                const aliasString = this.readString()
+                if (aliasString) selectItem.alias = aliasString
+            }
         }
 
-        return {
-            type: 'field',
-            fieldName: { parts: fieldString.split('.') },
-        }
+        return selectItem
     }
 
-    next(): SoqlFieldSelectParser {
+    next(): SoqlSelectItemParser | SoqlFromClauseParser {
         if (!this.consumed) {
             this.read()
         }
 
+        this.skipWhitespace()
+
         if (this.buffer.peek() === BYTE_MAP.comma) {
             this.buffer.next() // consume comma or whitespace after field name
-            return new SoqlFieldSelectParser(this.buffer)
+            return new SoqlSelectItemParser(this.buffer)
+        } else if (this.peekString().toUpperCase() === 'FROM') {
+            return new SoqlFromClauseParser(this.buffer)
         } else {
-            throw new SoqlParserError('No more field selects to parse') // TODO: support other select types
+            throw new SoqlParserError('No more select items to parse') // TODO: support other options
         }
     }
 }
 
 export class SoqlSelectParser extends SoqlBaseParser<
-    FieldSelect[],
-    SoqlFieldSelectParser
+    SelectClause,
+    SoqlSelectItemParser | SoqlFromClauseParser
 > {
-    protected parse(): FieldSelect[] {
-        const values: FieldSelect[] = []
-        let next = this.next()
+    protected parse(): SelectClause {
+        const values: SelectItem[] = []
+        let next: SoqlSelectItemParser | SoqlFromClauseParser = this.next()
 
-        while (next instanceof SoqlFieldSelectParser) {
+        while (next instanceof SoqlSelectItemParser) {
             const fieldSelect = next.read()
             values.push(fieldSelect)
-            try {
-                next = next.next()
-            } catch {
-                break
-            }
+
+            next = next.next()
         }
 
-        return values
+        return {
+            items: values,
+        }
     }
 
-    next(): SoqlFieldSelectParser {
+    next(): SoqlSelectItemParser | SoqlFromClauseParser {
+        if (this.consumed) {
+            return new SoqlFromClauseParser(this.buffer)
+        }
+
         this.skipWhitespace()
-        this.buffer.next() // consume s
-        this.buffer.next() // consume e
-        this.buffer.next() // consume l
-        this.buffer.next() // consume e
-        this.buffer.next() // consume c
-        this.buffer.next() // consume t
+        this.buffer.expect(BYTE_MAP.s, BYTE_MAP.S) // consume s
+        this.buffer.expect(BYTE_MAP.e, BYTE_MAP.E) // consume e
+        this.buffer.expect(BYTE_MAP.l, BYTE_MAP.L) // consume l
+        this.buffer.expect(BYTE_MAP.e, BYTE_MAP.E) // consume e
+        this.buffer.expect(BYTE_MAP.c, BYTE_MAP.C) // consume c
+        this.buffer.expect(BYTE_MAP.t, BYTE_MAP.T) // consume t
         this.skipWhitespace()
 
-        return new SoqlFieldSelectParser(this.buffer)
+        return new SoqlSelectItemParser(this.buffer)
     }
 }
 
 export class SoqlQueryParser extends SoqlBaseParser<
     SoqlQuery,
-    SoqlWhereClauseParser
+    SoqlSelectParser
 > {
     protected parse(): SoqlQuery {
-        throw new SoqlParserError('Not implemented yet')
+        let next: SoqlBaseParser | null = this.next()
+
+        if (!(next instanceof SoqlSelectParser)) {
+            throw new SoqlParserError('Expected SELECT clause in SOQL query')
+        }
+
+        const select = next.read()
+
+        next = next.next()
+        if (!(next instanceof SoqlFromClauseParser)) {
+            throw new SoqlParserError(
+                'Expected FROM clause in SOQL query but found ' +
+                    next.constructor.name,
+            )
+        }
+
+        const fromClause = next.read()
+
+        next = next.next()
+
+        let where: WhereClause | undefined = undefined
+        if (next instanceof SoqlWhereClauseParser) {
+            where = next.read()
+        }
+
+        return {
+            type: 'soqlQuery',
+            select: select,
+            from: fromClause,
+            where: where,
+        }
     }
 
-    next(): SoqlWhereClauseParser {
-        if (!this.consumed) {
-            this.read()
-        }
-        throw new SoqlParserError('No more query parts to parse') // TODO: support more query parts
+    next(): SoqlSelectParser {
+        return new SoqlSelectParser(this.buffer)
     }
 }
