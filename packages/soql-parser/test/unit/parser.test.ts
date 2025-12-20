@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, assert } from 'vitest'
 import {
     FieldSelect,
     SoqlFromClauseParser,
@@ -464,17 +464,17 @@ describe('SOQL Parsing', () => {
 
             // Move to LIMIT
             let next = fromParser.next()
-            expect(next).toBeInstanceOf(SoqlLimitClauseParser)
+            assert(next instanceof SoqlLimitClauseParser)
             next.read()
 
             // Move to OFFSET
-            next = next.next()
-            expect(next).toBeInstanceOf(SoqlOffsetClauseParser)
-            next.read()
+            const offsetParser = next.next()
+            assert(offsetParser instanceof SoqlOffsetClauseParser)
+            offsetParser.read()
 
             // OFFSET should be terminal - next() returns null
-            next = next.next()
-            expect(next).toBeNull()
+            const terminal = offsetParser.next()
+            expect(terminal).toBeNull()
         })
 
         it('should return null when no more clauses exist', () => {
