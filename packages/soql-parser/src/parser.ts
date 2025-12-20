@@ -1,5 +1,5 @@
-import { ByteBuffer } from './byte-buffer'
-import { SoqlParserError } from './errors'
+import { ByteBuffer } from './byte-buffer.js'
+import { SoqlParserError } from './errors.js'
 import {
     BooleanExpr,
     ByteStream,
@@ -19,7 +19,7 @@ import {
     SoqlQuery,
     ValueExpr,
     WhereClause,
-} from './types'
+} from './types.js'
 
 const BYTE_MAP = {
     space: 0x20,

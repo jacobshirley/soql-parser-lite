@@ -1,5 +1,5 @@
-import { SoqlQueryParser } from './parser'
-import { SoqlQuery } from './types'
+import { SoqlQueryParser } from './parser.js'
+import { SoqlQuery } from './types.js'
 
 export function parseSoqlQuery(soql: string): SoqlQuery {
     const parser = new SoqlQueryParser(soql)
