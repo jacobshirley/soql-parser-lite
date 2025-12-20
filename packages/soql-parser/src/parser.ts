@@ -105,6 +105,9 @@ const SOQL_KEYWORDS = [
     'OFFSET',
 ] as const
 
+/**
+ * Valid SOQL keywords that can be used in queries.
+ */
 export type SoqlKeyword = (typeof SOQL_KEYWORDS)[number]
 
 /**
@@ -122,30 +125,61 @@ const isWhitespace = (byte: number | null): boolean => {
     )
 }
 
+/**
+ * Base class for all SOQL parsers. Provides common functionality for parsing SOQL queries
+ * including buffer management, whitespace handling, and keyword recognition.
+ *
+ * @typeParam T - The type of value this parser produces
+ * @typeParam Next - The type of parser that can follow this one in the parsing chain
+ */
 export abstract class SoqlBaseParser<
     T = unknown,
     Next extends SoqlBaseParser | null = SoqlBaseParser<unknown, any> | null,
 > {
+    /** Indicates whether this parser has been consumed and produced a result */
     consumed: boolean = false
+    /** Internal buffer for managing byte-level input */
     protected buffer: ByteBuffer
 
+    /**
+     * Creates a new parser instance.
+     *
+     * @param buffer - Optional buffer or byte stream to parse from
+     */
     constructor(buffer?: ByteBuffer | ByteStream) {
         this.buffer =
             buffer instanceof ByteBuffer ? buffer : new ByteBuffer(buffer)
     }
 
+    /**
+     * Sets whether the end of file has been reached.
+     */
     set eof(value: boolean) {
         this.buffer.eof = value
     }
 
+    /**
+     * Gets whether the end of file has been reached.
+     */
     get eof(): boolean {
         return this.buffer.eof
     }
 
+    /**
+     * Feeds input data into the parser buffer.
+     *
+     * @param bytes - Input data as numbers, strings, or Uint8Arrays
+     */
     feed(...bytes: (number | string | Uint8Array)[]): void {
         this.buffer.feed(...bytes)
     }
 
+    /**
+     * Reads and returns the parsed result.
+     *
+     * @returns The parsed value
+     * @throws SoqlParserError if the parser has already been consumed
+     */
     read(): T {
         if (this.consumed) {
             throw new SoqlParserError('Parser has already been consumed')
@@ -155,8 +189,20 @@ export abstract class SoqlBaseParser<
         return parsed
     }
 
+    /**
+     * Internal method that performs the actual parsing logic.
+     * Must be implemented by subclasses.
+     *
+     * @returns The parsed value
+     */
     protected abstract parse(): T
 
+    /**
+     * Returns the next parser in the parsing chain.
+     * Must be implemented by subclasses.
+     *
+     * @returns The next parser or null if parsing is complete
+     */
     abstract next(): Next
 
     /**
@@ -168,6 +214,11 @@ export abstract class SoqlBaseParser<
         }
     }
 
+    /**
+     * Peeks ahead at the next string token without consuming it.
+     *
+     * @returns The next string token in the buffer
+     */
     protected peekString(): string {
         this.skipWhitespace()
 
@@ -188,6 +239,11 @@ export abstract class SoqlBaseParser<
         return extractedWord
     }
 
+    /**
+     * Peeks ahead at the next SOQL keyword without consuming it.
+     *
+     * @returns The next keyword if valid, null otherwise
+     */
     protected peekKeyword(): SoqlKeyword | null {
         const word = this.peekString().toUpperCase()
         if (!word || !SOQL_KEYWORDS.includes(word as any)) {
@@ -196,6 +252,11 @@ export abstract class SoqlBaseParser<
         return word as SoqlKeyword
     }
 
+    /**
+     * Reads and consumes the next string token from the buffer.
+     *
+     * @returns The consumed string token
+     */
     protected readString(): string {
         this.skipWhitespace()
 
@@ -217,6 +278,12 @@ export abstract class SoqlBaseParser<
         return extractedWord
     }
 
+    /**
+     * Reads and consumes the next SOQL keyword from the buffer.
+     *
+     * @returns The consumed keyword
+     * @throws SoqlParserError if the next token is not a valid keyword
+     */
     protected readKeyword(): SoqlKeyword {
         const word = this.readString().toUpperCase()
         if (!SOQL_KEYWORDS.includes(word as any)) {
@@ -226,6 +293,17 @@ export abstract class SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for boolean expressions in WHERE and HAVING clauses.
+ * Handles comparison operators, logical operators (AND/OR), and parenthesized expressions.
+ *
+ * @example
+ * ```typescript
+ * const parser = new SoqlBooleanExprParser('Age > 25 AND Status = "Active"');
+ * parser.eof = true;
+ * const expr = parser.read();
+ * ```
+ */
 export class SoqlBooleanExprParser extends SoqlBaseParser<
     BooleanExpr,
     SoqlBooleanExprParser
@@ -470,6 +548,10 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for individual objects in the FROM clause.
+ * Handles object names and optional aliases.
+ */
 export class SoqlFromObjectParser extends SoqlBaseParser<
     FromObject,
     | SoqlFromObjectParser
@@ -541,6 +623,17 @@ export class SoqlFromObjectParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for the FROM clause of a SOQL query.
+ * Handles one or more object names with optional aliases.
+ *
+ * @example
+ * ```typescript
+ * const parser = new SoqlFromClauseParser('FROM Account a, Contact c');
+ * parser.eof = true;
+ * const fromClause = parser.read();
+ * ```
+ */
 export class SoqlFromClauseParser extends SoqlBaseParser<
     FromClause,
     | SoqlFromObjectParser
@@ -609,6 +702,10 @@ export class SoqlFromClauseParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for the WHERE clause of a SOQL query.
+ * Delegates to a boolean expression parser for the actual condition parsing.
+ */
 export class SoqlWhereClauseParser extends SoqlBaseParser<
     WhereClause,
     | SoqlBooleanExprParser
@@ -668,6 +765,10 @@ export class SoqlWhereClauseParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for the GROUP BY clause of a SOQL query.
+ * Handles grouping by one or more fields.
+ */
 export class SoqlGroupByClauseParser extends SoqlBaseParser<
     GroupByClause,
     | SoqlHavingClauseParser
@@ -736,6 +837,10 @@ export class SoqlGroupByClauseParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for the HAVING clause of a SOQL query.
+ * Used to filter aggregated results in GROUP BY queries.
+ */
 export class SoqlHavingClauseParser extends SoqlBaseParser<
     HavingClause,
     | SoqlBooleanExprParser
@@ -792,6 +897,10 @@ export class SoqlHavingClauseParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for the ORDER BY clause of a SOQL query.
+ * Handles sorting by one or more fields with optional ASC/DESC direction.
+ */
 export class SoqlOrderByClauseParser extends SoqlBaseParser<
     OrderByClause,
     SoqlLimitClauseParser | SoqlOffsetClauseParser | null
@@ -858,6 +967,10 @@ export class SoqlOrderByClauseParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for the LIMIT clause of a SOQL query.
+ * Restricts the number of results returned.
+ */
 export class SoqlLimitClauseParser extends SoqlBaseParser<
     number,
     SoqlOffsetClauseParser | null
@@ -895,6 +1008,10 @@ export class SoqlLimitClauseParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for the OFFSET clause of a SOQL query.
+ * Specifies how many rows to skip before returning results.
+ */
 export class SoqlOffsetClauseParser extends SoqlBaseParser<number, null> {
     protected parse(): number {
         this.skipWhitespace()
@@ -925,6 +1042,10 @@ export class SoqlOffsetClauseParser extends SoqlBaseParser<number, null> {
     }
 }
 
+/**
+ * Parser for individual items in the SELECT clause.
+ * Handles fields, aggregate functions, and subqueries with optional aliases.
+ */
 export class SoqlSelectItemParser extends SoqlBaseParser<
     SelectItem,
     SoqlSelectItemParser | SoqlFromClauseParser
@@ -1005,6 +1126,10 @@ export class SoqlSelectItemParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Parser for the SELECT clause of a SOQL query.
+ * Handles parsing of field selections, aggregate functions, and subqueries.
+ */
 export class SoqlSelectParser extends SoqlBaseParser<
     SelectClause,
     SoqlSelectItemParser | SoqlFromClauseParser
@@ -1043,6 +1168,17 @@ export class SoqlSelectParser extends SoqlBaseParser<
     }
 }
 
+/**
+ * Main parser for complete SOQL queries.
+ * Orchestrates parsing of all clauses (SELECT, FROM, WHERE, GROUP BY, etc.).
+ *
+ * @example
+ * ```typescript
+ * const parser = new SoqlQueryParser('SELECT Id, Name FROM Account WHERE Status = "Active" LIMIT 10');
+ * parser.eof = true;
+ * const query = parser.read();
+ * ```
+ */
 export class SoqlQueryParser extends SoqlBaseParser<
     SoqlQuery,
     SoqlSelectParser
