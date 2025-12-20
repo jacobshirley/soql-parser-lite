@@ -1,20 +1,35 @@
+import { DEFAULT_MAX_BUFFER_SIZE } from './defaults.js'
+import {
+    BufferSizeExceededError,
+    EofReachedError,
+    NoMoreTokensError,
+} from './errors.js'
 import type { ByteStream, StreamInput } from './types.js'
 import { bytesToString, stringToBytes } from './utils.js'
 
 /**
- * Default maximum buffer size before compaction
+ * Converts a ReadableStream into an AsyncIterable.
+ *
+ * @param stream - The ReadableStream to convert
+ * @returns An AsyncIterable that yields items from the stream
  */
-const DEFAULT_MAX_BUFFER_SIZE = 1024 * 100 // 100 KB
+function readableStreamToAsyncIterable<T extends StreamInput>(
+    stream: ReadableStream<T>,
+): AsyncIterable<T> {
+    const reader = stream.getReader()
 
-/**
- * Error thrown when the buffer is empty and more input is needed.
- */
-export class NoMoreTokensError extends Error {}
-
-/**
- * Error thrown when the end of file has been reached and no more items are available.
- */
-export class EofReachedError extends Error {}
+    return {
+        async *[Symbol.asyncIterator]() {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) {
+                    break
+                }
+                yield value
+            }
+        },
+    }
+}
 
 /**
  * A buffer for managing byte-level input with support for async streams.
@@ -29,6 +44,8 @@ export class ByteBuffer {
     bufferIndex: number = 0
     /** Whether the buffer is locked against compaction */
     locked: boolean = false
+    /** Whether to allow exceeding the buffer size temporarily */
+    allowBufferToBeExceeded: boolean = true
     /** Current position in the input stream */
     protected inputOffset: number = 0
     /** Number of outputs generated */
@@ -44,7 +61,12 @@ export class ByteBuffer {
      * @param asyncIterable - Optional async iterable source for streaming input
      */
     constructor(asyncIterable?: ByteStream) {
-        this.asyncIterable = asyncIterable
+        this.asyncIterable =
+            asyncIterable instanceof ReadableStream
+                ? readableStreamToAsyncIterable(asyncIterable)
+                : typeof asyncIterable === 'string'
+                  ? [asyncIterable]
+                  : asyncIterable
     }
 
     /**
@@ -56,24 +78,24 @@ export class ByteBuffer {
             return false
         }
 
-        let i = 0
-
         const iterator = this.asyncIterable[Symbol.iterator]()
 
-        while (i < this.maxBufferSize) {
-            const nextByte = iterator.next()
+        let processed = false
+        while (this.length < this.maxBufferSize || !processed) {
+            const next = iterator.next()
+            processed = true
 
-            if (nextByte.done) {
+            if (next.done) {
                 this.eof = true
-                return false
+
+                break
             }
 
-            const value = nextByte.value
+            const value = next.value
             this.feed(value)
-            i++
         }
 
-        return true
+        return processed
     }
 
     /**
@@ -89,22 +111,20 @@ export class ByteBuffer {
         ) {
             return
         }
-
-        let i = 0
-
         const iterator = this.asyncIterable[Symbol.asyncIterator]()
 
-        while (i < this.maxBufferSize) {
-            const nextByte = await iterator.next()
+        let processed = false
+        while (this.length < this.maxBufferSize || !processed) {
+            processed = true
+            const next = await iterator.next()
 
-            if (nextByte.done) {
+            if (next.done) {
                 this.eof = true
-                break
+                return
             }
 
-            const value = nextByte.value
+            const value = next.value
             this.feed(value)
-            i++
         }
     }
 
@@ -126,27 +146,39 @@ export class ByteBuffer {
         for (const item of input) {
             if (Array.isArray(item)) {
                 for (const subItem of item) {
-                    this.buffer.push(subItem)
+                    this.push(subItem)
                 }
 
                 continue
             } else if (item instanceof Uint8Array) {
                 for (const subItem of item) {
-                    this.buffer.push(subItem)
+                    this.push(subItem)
                 }
 
                 continue
             } else if (typeof item === 'string') {
                 const encoded = stringToBytes(item)
                 for (const byte of encoded) {
-                    this.buffer.push(byte)
+                    this.push(byte)
                 }
 
                 continue
             }
 
-            this.buffer.push(item)
+            this.push(item)
         }
+    }
+
+    push(byte: number): void {
+        if (
+            !this.allowBufferToBeExceeded &&
+            this.buffer.length >= this.maxBufferSize
+        ) {
+            throw new BufferSizeExceededError(
+                'Buffer size exceeded maximum limit',
+            )
+        }
+        this.buffer.push(byte)
     }
 
     /**
@@ -189,13 +221,14 @@ export class ByteBuffer {
      */
     next(): number {
         if (this.bufferIndex >= this.buffer.length) {
-            if (!this.eof) {
-                if (!this.readStream()) {
-                    throw new NoMoreTokensError('No more items available')
-                } else {
-                    return this.next()
-                }
+            if (this.readStream()) {
+                return this.next()
             }
+
+            if (!this.eof) {
+                throw new NoMoreTokensError('No more items available')
+            }
+
             throw new EofReachedError('End of file reached')
         }
         this.inputOffset++
@@ -212,11 +245,11 @@ export class ByteBuffer {
      */
     expect<T extends number>(...itemType: T[]): T {
         const item = this.next()
+
         if (!itemType.includes(item as T)) {
-            throw new Error(
-                `Expected one of ${itemType.join(', ')} but got ${item} (${String.fromCharCode(item)})`,
-            )
+            throw new Error(`Expected ${itemType} but got ${item}`)
         }
+
         return item as T
     }
 
@@ -232,7 +265,7 @@ export class ByteBuffer {
 
     /**
      * Override to customize when to compact the buffer
-     * By default, compacts when more than 1000 items have been consumed
+     * By default, compacts when more than maxBufferSize bytes have been consumed
      *
      * @returns boolean indicating whether to compact the buffer
      */
