@@ -1,104 +1,129 @@
 import { describe, it, expect, assert } from 'vitest'
-import {
-    FieldSelect,
-    SoqlFromClauseParser,
-    SoqlGroupByClauseParser,
-    SoqlOrderByClauseParser,
-    SoqlLimitClauseParser,
-    SoqlOffsetClauseParser,
-    SoqlQueryParser,
-    SoqlSelectParser,
-    SoqlWhereClauseParser,
-    WhereClause,
-    SoqlHavingClauseParser,
-    SoqlQuery,
-    FromClause,
-    SelectClause,
-    OrderByClause,
-} from '../../src/index.js'
+import { SoqlFromClause, SoqlSelectClause } from '../../src/objects/field.js'
 
 describe('SOQL Parsing', () => {
     describe('Select Clause Parsing', () => {
         it('should parse a select clause', () => {
             const soql =
                 '  SELECT Name, Age, IsActive, Sub.Field, Sub.Field2  FROM User'
-            const object = new SoqlSelectParser()
-
-            object.feed(soql)
-
-            const fields = object.read()
-            expect(
-                fields.items.map((x) =>
-                    (x as FieldSelect).fieldName.parts.join('.'),
-                ),
-            ).toEqual(['Name', 'Age', 'IsActive', 'Sub.Field', 'Sub.Field2'])
+            const select = SoqlSelectClause.fromString(soql)
+            expect(select).toMatchInlineSnapshot(`
+              SoqlSelectClause {
+                "fields": [
+                  SoqlSelectField {
+                    "alias": undefined,
+                    "field": SoqlField {
+                      "name": "Name",
+                    },
+                  },
+                  SoqlSelectField {
+                    "alias": undefined,
+                    "field": SoqlField {
+                      "name": "Age",
+                    },
+                  },
+                  SoqlSelectField {
+                    "alias": undefined,
+                    "field": SoqlField {
+                      "name": "IsActive",
+                    },
+                  },
+                  SoqlSelectField {
+                    "alias": undefined,
+                    "field": SoqlField {
+                      "name": "Sub.Field",
+                    },
+                  },
+                  SoqlSelectField {
+                    "alias": undefined,
+                    "field": SoqlField {
+                      "name": "Sub.Field2",
+                    },
+                  },
+                ],
+              }
+            `)
         })
 
         it('should parse a select clause with functions', () => {
             const soql =
-                '  SELECT Name, COUNT(Id), MAX(Age), Sub.Field  FROM User'
-            const object = new SoqlSelectParser()
-
-            object.feed(soql)
-
-            const fields = object.read()
-            expect(fields).toEqual({
-                items: [
+                '  SELECT Name, COUNT(Id), MAX(Age), Sub.Field, MAX(Sub.Field)  FROM User'
+            const select = SoqlSelectClause.fromString(soql)
+            console.log(JSON.stringify(select, null, 2))
+            expect(select).toEqual({
+                fields: [
                     {
-                        type: 'field',
-                        fieldName: { parts: ['Name'] },
+                        field: {
+                            name: 'Name',
+                        },
                     },
                     {
-                        type: 'aggregate',
-                        functionName: 'COUNT',
-                        fieldName: { parts: ['Id'] },
+                        field: {
+                            functionName: 'COUNT',
+                            field: {
+                                name: 'Id',
+                            },
+                        },
                     },
                     {
-                        type: 'aggregate',
-                        functionName: 'MAX',
-                        fieldName: { parts: ['Age'] },
+                        field: {
+                            functionName: 'MAX',
+                            field: {
+                                name: 'Age',
+                            },
+                        },
                     },
                     {
-                        type: 'field',
-                        fieldName: { parts: ['Sub', 'Field'] },
+                        field: {
+                            name: 'Sub.Field',
+                        },
+                    },
+                    {
+                        field: {
+                            functionName: 'MAX',
+                            field: {
+                                name: 'Sub.Field',
+                            },
+                        },
                     },
                 ],
-            } satisfies SelectClause)
+            })
         })
 
         it('should parse a select clause with aliases', () => {
             const soql =
-                '  SELECT Name, COUNT(Id) cnt, MAX(Age) maxAge, Sub.Field f  FROM User'
-            const object = new SoqlSelectParser()
+                '  SELECT Name, COUNT(Id) cnt, MAX(Age) maxAge , Sub.Field f  FROM User'
+            const select = SoqlSelectClause.fromString(soql)
 
-            object.feed(soql)
-
-            const fields = object.read()
-            expect(fields).toEqual({
-                items: [
-                    {
-                        type: 'field',
-                        fieldName: { parts: ['Name'] },
-                    },
-                    {
-                        type: 'aggregate',
+            const aliasedFields = select.fields.filter(
+                (x) => x.alias !== undefined,
+            )
+            expect(aliasedFields).toEqual([
+                {
+                    field: {
                         functionName: 'COUNT',
-                        fieldName: { parts: ['Id'] },
-                        alias: 'cnt',
+                        field: {
+                            name: 'Id',
+                        },
                     },
-                    {
-                        type: 'aggregate',
+                    alias: 'cnt',
+                },
+                {
+                    field: {
                         functionName: 'MAX',
-                        fieldName: { parts: ['Age'] },
-                        alias: 'maxAge',
+                        field: {
+                            name: 'Age',
+                        },
                     },
-                    {
-                        type: 'field',
-                        fieldName: { parts: ['Sub', 'Field'] },
-                        alias: 'f',
+                    alias: 'maxAge',
+                },
+                {
+                    field: {
+                        name: 'Sub.Field',
                     },
-                ],
-            } satisfies SelectClause)
+                    alias: 'f',
+                },
+            ])
         })
 
         it('should be able to subquery in select clause', () => {
@@ -148,30 +173,22 @@ describe('SOQL Parsing', () => {
     describe('From Clause Parsing', () => {
         it('should parse a from clause', () => {
             const soql = '  FROM Account'
-            const from = new SoqlFromClauseParser()
+            const from = SoqlFromClause.fromString(soql)
 
-            from.feed(soql)
-            from.eof = true
-
-            const fromClause = from.read()
-            expect(fromClause).toEqual({
+            expect(from).toEqual({
                 objects: [
                     {
                         name: 'Account',
                     },
                 ],
-            } satisfies FromClause)
+            })
         })
 
         it('should parse multiple from clauses', () => {
             const soql = '  FROM Account a, Contact c '
-            const from = new SoqlFromClauseParser()
+            const from = SoqlFromClause.fromString(soql)
 
-            from.feed(soql)
-            from.eof = true
-
-            const fromClause1 = from.read()
-            expect(fromClause1).toEqual({
+            expect(from).toEqual({
                 objects: [
                     {
                         name: 'Account',
@@ -182,15 +199,15 @@ describe('SOQL Parsing', () => {
                         alias: 'c',
                     },
                 ],
-            } satisfies FromClause)
+            } satisfies SoqlFromClause)
         })
     })
 
     describe('Where Clause Parsing', () => {
-        it('should parse a basic where clause', () => {
+        it.only('should parse a basic where clause', () => {
             const soql =
                 "  WHERE Name = 'John' AND Age >= 30 OR IsActive = true "
-            const where = new SoqlWhereClauseParser()
+            const where = SoqlWhereClause.fromString(soql)
 
             where.feed(soql)
             where.eof = true

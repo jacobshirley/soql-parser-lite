@@ -29,34 +29,46 @@ export interface FieldPath {
 }
 
 /**
- * Represents a simple field selection in the SELECT clause.
+ * Represents a simple field reference.
  */
-export interface FieldSelect {
+export interface Field {
     type: 'field'
     /** The field path being selected */
-    fieldName: FieldPath
+    path: FieldPath
+}
+
+/**
+ * Represents an aggregate function call.
+ * Examples: COUNT(Id), MAX(Amount), AVG(Revenue)
+ */
+export interface AggregateField {
+    type: 'aggregate'
+    /** The name of the aggregate function (COUNT, MAX, MIN, SUM, AVG) */
+    functionName: string
+    /** The field being aggregated */
+    field: Field
+}
+
+/**
+ * Represents a simple field selection in the SELECT clause.
+ */
+export interface FieldSelect extends Field {
     /** Optional alias for the field */
     alias?: string
 }
 
 /**
- * Represents an aggregate function call in the SELECT clause.
- * Examples: COUNT(Id), MAX(Amount), AVG(Revenue)
+ * Represents an aggregate field selection in the SELECT clause.
  */
-export interface AggregateSelect {
-    type: 'aggregate'
-    /** The name of the aggregate function (COUNT, MAX, MIN, SUM, AVG) */
-    functionName: string
-    /** The field being aggregated */
-    fieldName: FieldPath
-    /** Optional alias for the result */
+export interface AggregateFieldSelect extends AggregateField {
+    /** Optional alias for the aggregate field */
     alias?: string
 }
 
 /**
  * Represents a subquery in the SELECT clause.
  */
-export interface SubquerySelect {
+export interface Subquery {
     type: 'subquery'
     /** The nested SOQL query */
     subquery: SoqlQuery
@@ -65,7 +77,7 @@ export interface SubquerySelect {
 /**
  * Union type representing any valid SELECT clause item.
  */
-export type SelectItem = FieldSelect | AggregateSelect | SubquerySelect
+export type SelectItem = FieldSelect | AggregateFieldSelect | Subquery
 
 /**
  * Represents a Salesforce object name.
@@ -126,7 +138,7 @@ export interface ComparisonExpr {
     /** The comparison operator */
     operator: '=' | '!=' | '<' | '<=' | '>' | '>=' | 'like'
     /** The field being compared */
-    left: FieldSelect | AggregateSelect
+    left: Field | AggregateField
     /** The value to compare against */
     right: ValueExpr
 }
@@ -137,7 +149,7 @@ export interface ComparisonExpr {
 export interface InExpr {
     type: 'in'
     /** The field being checked */
-    left: FieldSelect | AggregateSelect
+    left: Field | AggregateField
     /** Array of values or a subquery */
     right: ValueExpr[] | SoqlQuery // array of literals
 }
@@ -167,7 +179,7 @@ export interface WhereClause {
 /**
  * Union type representing valid fields in a GROUP BY clause.
  */
-export type GroupByField = FieldSelect | AggregateSelect
+export type GroupByField = Field | AggregateField
 
 /**
  * Represents the GROUP BY clause of a SOQL query.
@@ -382,7 +394,7 @@ export type ValueExpr =
  */
 export type OrderByField = {
     /** The field to sort by */
-    field: FieldSelect | AggregateSelect
+    field: Field | AggregateField
     /** Sort direction (ascending or descending) */
     direction: 'ASC' | 'DESC' | null
 }

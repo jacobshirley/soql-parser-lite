@@ -29,7 +29,7 @@ console.log(
     'Query:',
     'SELECT Id, Name FROM Account WHERE Status = "Active" AND AnnualRevenue > 1000000',
 )
-console.log('WHERE clause type:', whereQuery.where?.expr.type)
+console.log('WHERE clause type:', JSON.stringify(whereQuery.where, null, 2))
 console.log()
 
 // Example 3: Aggregate functions with GROUP BY

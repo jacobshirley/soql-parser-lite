@@ -1,11 +1,12 @@
 import { ByteBuffer } from './byte-buffer.js'
+import { BYTE_MAP } from './byte-map.js'
 import { SoqlParserError } from './errors.js'
 import {
     BooleanExpr,
     ByteStream,
     DATE_LITERALS,
     DATE_LITERALS_DYNAMIC,
-    FieldSelect,
+    Field,
     FieldPath,
     FromClause,
     FromObject,
@@ -22,79 +23,11 @@ import {
     SOQL_KEYWORDS,
     SoqlKeyword,
     GroupByField,
+    AggregateField,
+    Subquery,
+    FieldSelect,
 } from './types.js'
-
-/**
- * Mapping of commonly used characters to their byte values for efficient parsing.
- * @internal
- */
-const BYTE_MAP = {
-    space: 0x20,
-    tab: 0x09,
-    carriageReturn: 0x0d,
-    lineFeed: 0x0a,
-    comma: 0x2c,
-    openParen: 0x28,
-    closeParen: 0x29,
-    a: 0x61,
-    A: 0x41,
-    n: 0x6e,
-    N: 0x4e,
-    d: 0x64,
-    D: 0x44,
-    o: 0x6f,
-    O: 0x4f,
-    r: 0x72,
-    R: 0x52,
-    s: 0x73,
-    S: 0x53,
-    f: 0x66,
-    F: 0x46,
-    m: 0x6d,
-    M: 0x4d,
-    t: 0x74,
-    T: 0x54,
-    e: 0x65,
-    E: 0x45,
-    l: 0x6c,
-    L: 0x4c,
-    c: 0x63,
-    C: 0x43,
-    w: 0x77,
-    W: 0x57,
-    h: 0x68,
-    H: 0x48,
-    g: 0x67,
-    G: 0x47,
-    i: 0x69,
-    I: 0x49,
-    p: 0x70,
-    P: 0x50,
-    u: 0x75,
-    U: 0x55,
-    v: 0x76,
-    V: 0x56,
-    b: 0x62,
-    B: 0x42,
-    y: 0x79,
-    Y: 0x59,
-}
-
-/**
- * Checks if a byte represents a whitespace character.
- *
- * @param byte - The byte to check
- * @returns True if the byte is a space, tab, carriage return, or line feed
- */
-const isWhitespace = (byte: number | null): boolean => {
-    return (
-        byte === BYTE_MAP.space ||
-        byte === BYTE_MAP.tab ||
-        byte === BYTE_MAP.carriageReturn ||
-        byte === BYTE_MAP.lineFeed
-    )
-}
-
+import { isWhitespace } from './byte-map.js'
 /**
  * Base class for all SOQL parsers. Provides common functionality for parsing SOQL queries
  * including buffer management, whitespace handling, and keyword recognition.
@@ -260,6 +193,27 @@ export abstract class SoqlBaseParser<
             throw new SoqlParserError(`Expected SOQL keyword, got: ${word}`)
         }
         return word as SoqlKeyword
+    }
+
+    protected oneOf<T>(...parsers: SoqlBaseParser<T, any>[]): T {
+        const errors: Error[] = []
+        for (const parser of parsers) {
+            const result = this.buffer.resetOnFail(
+                () => parser.read(),
+                (err) => {
+                    errors.push(err)
+                },
+                true,
+            )
+
+            if (result !== undefined) {
+                return result
+            }
+        }
+
+        throw new SoqlParserError(
+            `None of the provided parsers matched. Errors: ${errors.map((e) => e.message).join('; ')}`,
+        )
     }
 }
 
@@ -494,14 +448,10 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
      * @private
      */
     private parseComparisonExpr(): BooleanExpr {
-        const fieldParser = new SoqlSelectItemParser(this.buffer)
-        const field = fieldParser.read()
-
-        if (field.type === 'subquery') {
-            throw new SoqlParserError(
-                'Subqueries are not allowed in comparison expressions',
-            )
-        }
+        const field = this.oneOf<Field | AggregateField>(
+            new SoqlAggregateFieldParser(this.buffer),
+            new SoqlFieldParser(this.buffer),
+        )
 
         this.skipWhitespace()
 
@@ -848,14 +798,10 @@ export class SoqlGroupByFieldParser extends SoqlBaseParser<
     | null
 > {
     protected parse(): GroupByField {
-        const selectItemParser = new SoqlSelectItemParser(this.buffer)
-        const field = selectItemParser.read()
-
-        if (field.type === 'subquery') {
-            throw new SoqlParserError(
-                'Subqueries are not allowed in GROUP BY fields',
-            )
-        }
+        const field = this.oneOf<Field | AggregateField>(
+            new SoqlAggregateFieldParser(this.buffer),
+            new SoqlFieldParser(this.buffer),
+        )
 
         return field
     }
@@ -1025,14 +971,11 @@ export class SoqlOrderByFieldParser extends SoqlBaseParser<
     | null
 > {
     protected parse(): OrderByField {
-        const selectItemParser = new SoqlSelectItemParser(this.buffer)
-        const field = selectItemParser.read()
-        if (field.type === 'subquery') {
-            throw new SoqlParserError(
-                'Subqueries are not allowed in ORDER BY fields',
-            )
-        }
-
+        const field = this.oneOf<Field | AggregateField>(
+            new SoqlAggregateFieldParser(this.buffer),
+            new SoqlFieldParser(this.buffer),
+        )
+        this.skipWhitespace()
         const keyword = this.peekKeyword()
 
         let direction: 'ASC' | 'DESC' | null = null
@@ -1149,6 +1092,128 @@ export class SoqlOffsetClauseParser extends SoqlBaseParser<number, null> {
     }
 }
 
+export class SoqlFieldParser extends SoqlBaseParser<Field, null> {
+    protected parse(): Field {
+        const fieldPathString = this.readString()
+        return {
+            type: 'field',
+            path: { parts: fieldPathString.split('.') },
+        }
+    }
+
+    next(): null {
+        if (!this.consumed) {
+            this.read()
+        }
+
+        return null
+    }
+}
+
+export class SoqlFieldSelectParser extends SoqlBaseParser<FieldSelect, null> {
+    protected parse(): FieldSelect {
+        this.skipWhitespace()
+        const fieldParser = new SoqlFieldParser(this.buffer)
+        const field = fieldParser.read()
+        this.skipWhitespace()
+
+        const peekedKeyword = this.peekKeyword()
+
+        let alias: string | undefined = undefined
+        if (!peekedKeyword) {
+            // Alias detected
+            const aliasString = this.readString()
+            if (aliasString) {
+                alias = aliasString
+            }
+        }
+
+        return {
+            ...field,
+            type: 'field',
+            alias,
+        }
+    }
+
+    next(): null {
+        if (!this.consumed) {
+            this.read()
+        }
+
+        return null
+    }
+}
+
+export class SoqlAggregateFieldParser extends SoqlBaseParser<
+    AggregateField,
+    null
+> {
+    protected parse(): AggregateField {
+        this.skipWhitespace()
+        const functionName = this.readString().toUpperCase().trim()
+        this.skipWhitespace()
+        this.buffer.expect(BYTE_MAP.openParen)
+        const field = new SoqlFieldParser(this.buffer).read()
+        this.skipWhitespace()
+        this.buffer.expect(BYTE_MAP.closeParen)
+
+        this.skipWhitespace()
+
+        const peekedKeyword = this.peekKeyword()
+
+        let alias: string | undefined = undefined
+        if (!peekedKeyword) {
+            // Alias detected
+            const aliasString = this.readString()
+            if (aliasString) {
+                alias = aliasString
+            }
+        }
+
+        return {
+            type: 'aggregate',
+            functionName: functionName,
+            field: field,
+            alias,
+        }
+    }
+
+    next(): null {
+        if (!this.consumed) {
+            this.read()
+        }
+
+        return null
+    }
+}
+
+export class SoqlSubqueryParser extends SoqlBaseParser<Subquery, null> {
+    protected parse(): Subquery {
+        this.skipWhitespace()
+        this.buffer.expect(BYTE_MAP.openParen)
+        this.skipWhitespace()
+
+        const queryParser = new SoqlQueryParser(this.buffer)
+        const subquery = queryParser.read()
+
+        this.skipWhitespace()
+        this.buffer.expect(BYTE_MAP.closeParen)
+
+        return {
+            type: 'subquery',
+            subquery: subquery,
+        }
+    }
+
+    next(): null {
+        if (!this.consumed) {
+            this.read()
+        }
+
+        return null
+    }
+}
+
 /**
  * Parser for individual items in the SELECT clause.
  * Handles fields, aggregate functions, and subqueries with optional aliases.
@@ -1164,52 +1229,12 @@ export class SoqlSelectItemParser extends SoqlBaseParser<
 
         const nextByte = this.buffer.peek()
         if (nextByte === BYTE_MAP.openParen) {
-            // Subquery
-            this.buffer.expect(BYTE_MAP.openParen)
-
-            const queryParser = new SoqlQueryParser(this.buffer)
-            const subquery = queryParser.read()
-            this.skipWhitespace()
-            this.buffer.expect(BYTE_MAP.closeParen)
-
-            selectItem = {
-                type: 'subquery',
-                subquery: subquery,
-            }
+            selectItem = new SoqlSubqueryParser(this.buffer).read()
         } else {
-            const string1 = this.readString()
-
-            if (this.buffer.peek() === BYTE_MAP.openParen) {
-                // Aggregate function
-
-                const functionName = string1.toUpperCase().trim()
-                this.buffer.expect(BYTE_MAP.openParen)
-                const argumentString = this.readString()
-                this.buffer.expect(BYTE_MAP.closeParen)
-
-                selectItem = {
-                    type: 'aggregate',
-                    functionName: functionName,
-                    fieldName: {
-                        parts: argumentString.split('.'),
-                    },
-                }
-            } else {
-                // Regular field select
-                selectItem = {
-                    type: 'field',
-                    fieldName: { parts: string1.split('.') },
-                }
-            }
-
-            this.skipWhitespace()
-            const peekedKeyword = this.peekKeyword()
-
-            if (!peekedKeyword) {
-                // Alias detected
-                const aliasString = this.readString()
-                if (aliasString) selectItem.alias = aliasString
-            }
+            selectItem = this.oneOf<FieldSelect | AggregateField>(
+                new SoqlAggregateFieldParser(this.buffer),
+                new SoqlFieldSelectParser(this.buffer),
+            )
         }
 
         return selectItem

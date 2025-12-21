@@ -290,7 +290,11 @@ export class ByteBuffer {
      * @param onFail - Optional callback invoked on failure
      * @returns The result of tryFn if successful, undefined if NoMoreTokensError thrown
      */
-    resetOnFail<T>(tryFn: () => T, onFail?: (e: Error) => void): T | undefined {
+    resetOnFail<T>(
+        tryFn: () => T,
+        onFail?: (e: Error) => void,
+        catchAll: boolean = false,
+    ): T | undefined {
         const bufferIndex = this.bufferIndex
         try {
             const result = tryFn()
@@ -299,7 +303,10 @@ export class ByteBuffer {
             }
             return result
         } catch (e) {
-            if (e instanceof NoMoreTokensError) {
+            if (
+                e instanceof Error &&
+                (catchAll || e instanceof NoMoreTokensError)
+            ) {
                 this.bufferIndex = bufferIndex
                 onFail?.(e)
             } else {
