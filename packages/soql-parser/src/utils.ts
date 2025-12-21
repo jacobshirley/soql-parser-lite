@@ -1,4 +1,13 @@
+/**
+ * Encoder for converting strings to UTF-8 byte arrays.
+ * @internal
+ */
 const textEncoder = new TextEncoder()
+
+/**
+ * Decoder for converting UTF-8 byte arrays to strings.
+ * @internal
+ */
 const textDecoder = new TextDecoder()
 
 /**

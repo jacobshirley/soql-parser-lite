@@ -169,6 +169,12 @@ export class ByteBuffer {
         }
     }
 
+    /**
+     * Pushes a single byte into the buffer.
+     *
+     * @param byte - The byte value to add to the buffer
+     * @throws BufferSizeExceededError if buffer size limit is exceeded and allowBufferToBeExceeded is false
+     */
     push(byte: number): void {
         if (
             !this.allowBufferToBeExceeded &&

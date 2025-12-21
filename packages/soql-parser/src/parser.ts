@@ -21,6 +21,10 @@ import {
     WhereClause,
 } from './types.js'
 
+/**
+ * Mapping of commonly used characters to their byte values for efficient parsing.
+ * @internal
+ */
 const BYTE_MAP = {
     space: 0x20,
     tab: 0x09,
@@ -73,6 +77,10 @@ const BYTE_MAP = {
     Y: 0x59,
 }
 
+/**
+ * List of all valid SOQL keywords recognized by the parser.
+ * @internal
+ */
 const SOQL_KEYWORDS = [
     'SELECT',
     'FROM',
@@ -367,6 +375,12 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
         }
     }
 
+    /**
+     * Parses a parenthesized boolean expression.
+     *
+     * @returns A paren expression wrapping the inner boolean expression
+     * @private
+     */
     private parseParenExpr(): BooleanExpr {
         this.buffer.expect(BYTE_MAP.openParen)
         this.skipWhitespace()
@@ -383,6 +397,14 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
         }
     }
 
+    /**
+     * Parses a single value expression (literal, bind variable, or date literal).
+     * Handles strings, numbers, booleans, dates, datetimes, null, bind variables, and date literals.
+     *
+     * @returns The parsed value expression
+     * @throws SoqlParserError if the value expression is unrecognized
+     * @private
+     */
     private parseSingleValueExpr(): ValueExpr {
         const valueString = this.readString()
 
@@ -460,6 +482,13 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
         return expr
     }
 
+    /**
+     * Parses a value expression which can be a single value, an array of values, or a subquery.
+     * Used in WHERE and HAVING clauses for comparison operators.
+     *
+     * @returns A single value, an array of values for IN operator, or a subquery
+     * @private
+     */
     private parseValueExpr(): ValueExpr | ValueExpr[] | SoqlQuery {
         this.skipWhitespace()
 
@@ -491,6 +520,14 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
         }
     }
 
+    /**
+     * Parses a comparison expression (field operator value).
+     * Handles both simple comparisons and IN expressions.
+     *
+     * @returns A comparison or IN expression
+     * @throws SoqlParserError if the operator is unrecognized or misused
+     * @private
+     */
     private parseComparisonExpr(): BooleanExpr {
         const fieldString = this.readString()
         const field: FieldSelect = {
