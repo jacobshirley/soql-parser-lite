@@ -126,7 +126,7 @@ export interface ComparisonExpr {
     /** The comparison operator */
     operator: '=' | '!=' | '<' | '<=' | '>' | '>=' | 'like'
     /** The field being compared */
-    left: FieldPath
+    left: FieldSelect | AggregateSelect
     /** The value to compare against */
     right: ValueExpr
 }
@@ -137,7 +137,7 @@ export interface ComparisonExpr {
 export interface InExpr {
     type: 'in'
     /** The field being checked */
-    left: FieldPath
+    left: FieldSelect | AggregateSelect
     /** Array of values or a subquery */
     right: ValueExpr[] | SoqlQuery // array of literals
 }
@@ -165,13 +165,18 @@ export interface WhereClause {
 }
 
 /**
+ * Union type representing valid fields in a GROUP BY clause.
+ */
+export type GroupByField = FieldSelect | AggregateSelect
+
+/**
  * Represents the GROUP BY clause of a SOQL query.
  */
 export interface GroupByClause {
     /** The fields to group by */
-    fields: FieldPath[]
-    /** Whether ROLLUP is specified for subtotals */
-    rollup?: boolean
+    fields: GroupByField[]
+    /** Whether ROLLUP or CUBE is specified for subtotals */
+    groupingType?: 'ROLLUP' | 'CUBE'
 }
 
 /**
@@ -274,6 +279,51 @@ export const DATE_LITERALS_DYNAMIC = [
 ] as const
 
 /**
+ * List of all valid SOQL keywords recognized by the parser.
+ * @internal
+ */
+export const SOQL_KEYWORDS = [
+    ...OPERATORS,
+    'SELECT',
+    'FROM',
+    'WHERE',
+    'AND',
+    'OR',
+    'IN',
+    'LIKE',
+    'COUNT',
+    'MAX',
+    'MIN',
+    'SUM',
+    'AVG',
+    'ASC',
+    'DESC',
+    'EXCLUDES',
+    'FIRST',
+    'GROUP',
+    'HAVING',
+    'INCLUDES',
+    'LAST',
+    'LIMIT',
+    'NOT',
+    'NULL',
+    'NULLS',
+    'USING',
+    'WITH',
+    'ORDER',
+    'BY',
+    'OFFSET',
+    'ROLLUP',
+    'CUBE',
+    'DISTINCT',
+] as const
+
+/**
+ * Valid SOQL keywords that can be used in queries.
+ */
+export type SoqlKeyword = (typeof SOQL_KEYWORDS)[number]
+
+/**
  * Represents a SOQL date literal (static like TODAY or dynamic like LAST_N_DAYS:7).
  */
 export interface DateLiteral {
@@ -332,9 +382,9 @@ export type ValueExpr =
  */
 export type OrderByField = {
     /** The field to sort by */
-    field: FieldPath
+    field: FieldSelect | AggregateSelect
     /** Sort direction (ascending or descending) */
-    direction: 'ASC' | 'DESC'
+    direction: 'ASC' | 'DESC' | null
 }
 
 /**

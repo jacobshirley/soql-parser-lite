@@ -19,6 +19,9 @@ import {
     SoqlQuery,
     ValueExpr,
     WhereClause,
+    SOQL_KEYWORDS,
+    SoqlKeyword,
+    GroupByField,
 } from './types.js'
 
 /**
@@ -76,47 +79,6 @@ const BYTE_MAP = {
     y: 0x79,
     Y: 0x59,
 }
-
-/**
- * List of all valid SOQL keywords recognized by the parser.
- * @internal
- */
-const SOQL_KEYWORDS = [
-    'SELECT',
-    'FROM',
-    'WHERE',
-    'AND',
-    'OR',
-    'IN',
-    'LIKE',
-    'COUNT',
-    'MAX',
-    'MIN',
-    'SUM',
-    'AVG',
-    'ASC',
-    'DESC',
-    'EXCLUDES',
-    'FIRST',
-    'GROUP',
-    'HAVING',
-    'INCLUDES',
-    'LAST',
-    'LIMIT',
-    'NOT',
-    'NULL',
-    'NULLS',
-    'USING',
-    'WITH',
-    'ORDER',
-    'BY',
-    'OFFSET',
-] as const
-
-/**
- * Valid SOQL keywords that can be used in queries.
- */
-export type SoqlKeyword = (typeof SOQL_KEYWORDS)[number]
 
 /**
  * Checks if a byte represents a whitespace character.
@@ -409,7 +371,10 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
         const valueString = this.readString()
 
         let expr: ValueExpr
-        if (valueString.startsWith("'") && valueString.endsWith("'")) {
+        if (
+            (valueString.startsWith("'") && valueString.endsWith("'")) ||
+            (valueString.startsWith('"') && valueString.endsWith('"'))
+        ) {
             expr = {
                 type: 'string',
                 value: valueString.slice(1, -1),
@@ -529,10 +494,13 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
      * @private
      */
     private parseComparisonExpr(): BooleanExpr {
-        const fieldString = this.readString()
-        const field: FieldSelect = {
-            type: 'field',
-            fieldName: { parts: fieldString.split('.') },
+        const fieldParser = new SoqlSelectItemParser(this.buffer)
+        const field = fieldParser.read()
+
+        if (field.type === 'subquery') {
+            throw new SoqlParserError(
+                'Subqueries are not allowed in comparison expressions',
+            )
         }
 
         this.skipWhitespace()
@@ -542,7 +510,7 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
 
         if (!OPERATORS.includes(operator)) {
             throw new SoqlParserError(
-                `Unrecognized operator in comparison expression: ${operator}`,
+                `Unrecognized operator in comparison expression: '${operator}'`,
             )
         }
 
@@ -563,14 +531,14 @@ export class SoqlBooleanExprParser extends SoqlBaseParser<
         if (operator === 'in') {
             return {
                 type: 'in',
-                left: field.fieldName,
+                left: field,
                 right: rightExpr as ValueExpr[] | SoqlQuery,
             }
         }
 
         return {
             type: 'comparison',
-            left: field.fieldName,
+            left: field,
             operator: operator,
             right: rightExpr as ValueExpr,
         }
@@ -808,6 +776,7 @@ export class SoqlWhereClauseParser extends SoqlBaseParser<
  */
 export class SoqlGroupByClauseParser extends SoqlBaseParser<
     GroupByClause,
+    | SoqlGroupByFieldParser
     | SoqlHavingClauseParser
     | SoqlOrderByClauseParser
     | SoqlLimitClauseParser
@@ -815,6 +784,44 @@ export class SoqlGroupByClauseParser extends SoqlBaseParser<
     | null
 > {
     protected parse(): GroupByClause {
+        const fields: GroupByClause['fields'] = []
+        let next: SoqlBaseParser | null = this.next()
+
+        while (next instanceof SoqlGroupByFieldParser) {
+            const field = next.read()
+            fields.push(field)
+            next = next.next()
+        }
+
+        return { fields }
+    }
+
+    next():
+        | SoqlGroupByFieldParser
+        | SoqlHavingClauseParser
+        | SoqlOrderByClauseParser
+        | SoqlLimitClauseParser
+        | SoqlOffsetClauseParser
+        | null {
+        if (this.consumed) {
+            this.skipWhitespace()
+            const keyword = this.peekKeyword()
+            if (!keyword) return null
+
+            switch (keyword) {
+                case 'HAVING':
+                    return new SoqlHavingClauseParser(this.buffer)
+                case 'ORDER':
+                    return new SoqlOrderByClauseParser(this.buffer)
+                case 'LIMIT':
+                    return new SoqlLimitClauseParser(this.buffer)
+                case 'OFFSET':
+                    return new SoqlOffsetClauseParser(this.buffer)
+                default:
+                    return null
+            }
+        }
+
         this.skipWhitespace()
 
         this.buffer.expect(BYTE_MAP.g, BYTE_MAP.G) // consume g
@@ -827,25 +834,34 @@ export class SoqlGroupByClauseParser extends SoqlBaseParser<
         this.buffer.expect(BYTE_MAP.y, BYTE_MAP.Y) // consume y
         this.skipWhitespace()
 
-        const fields: FieldPath[] = []
+        return new SoqlGroupByFieldParser(this.buffer)
+    }
+}
 
-        while (true) {
-            const fieldString = this.readString()
-            fields.push({ parts: fieldString.split('.') })
+export class SoqlGroupByFieldParser extends SoqlBaseParser<
+    GroupByField,
+    | SoqlGroupByFieldParser
+    | SoqlHavingClauseParser
+    | SoqlOrderByClauseParser
+    | SoqlLimitClauseParser
+    | SoqlOffsetClauseParser
+    | null
+> {
+    protected parse(): GroupByField {
+        const selectItemParser = new SoqlSelectItemParser(this.buffer)
+        const field = selectItemParser.read()
 
-            this.skipWhitespace()
-            if (this.buffer.peek() === BYTE_MAP.comma) {
-                this.buffer.next() // consume comma
-                this.skipWhitespace()
-            } else {
-                break
-            }
+        if (field.type === 'subquery') {
+            throw new SoqlParserError(
+                'Subqueries are not allowed in GROUP BY fields',
+            )
         }
 
-        return { fields }
+        return field
     }
 
     next():
+        | SoqlGroupByFieldParser
         | SoqlHavingClauseParser
         | SoqlOrderByClauseParser
         | SoqlLimitClauseParser
@@ -855,22 +871,29 @@ export class SoqlGroupByClauseParser extends SoqlBaseParser<
             this.read()
         }
 
-        this.skipWhitespace()
-        const keyword = this.peekKeyword()
-        if (!keyword) return null
+        if (this.buffer.peek() === BYTE_MAP.comma) {
+            this.buffer.next() // consume comma
+            this.skipWhitespace()
+        } else {
+            this.skipWhitespace()
+            const keyword = this.peekKeyword()
+            if (!keyword) return null
 
-        switch (keyword) {
-            case 'HAVING':
-                return new SoqlHavingClauseParser(this.buffer)
-            case 'ORDER':
-                return new SoqlOrderByClauseParser(this.buffer)
-            case 'LIMIT':
-                return new SoqlLimitClauseParser(this.buffer)
-            case 'OFFSET':
-                return new SoqlOffsetClauseParser(this.buffer)
-            default:
-                return null
+            switch (keyword) {
+                case 'HAVING':
+                    return new SoqlHavingClauseParser(this.buffer)
+                case 'ORDER':
+                    return new SoqlOrderByClauseParser(this.buffer)
+                case 'LIMIT':
+                    return new SoqlLimitClauseParser(this.buffer)
+                case 'OFFSET':
+                    return new SoqlOffsetClauseParser(this.buffer)
+                default:
+                    return null
+            }
         }
+
+        return new SoqlGroupByFieldParser(this.buffer)
     }
 }
 
@@ -940,9 +963,44 @@ export class SoqlHavingClauseParser extends SoqlBaseParser<
  */
 export class SoqlOrderByClauseParser extends SoqlBaseParser<
     OrderByClause,
-    SoqlLimitClauseParser | SoqlOffsetClauseParser | null
+    | SoqlOrderByFieldParser
+    | SoqlLimitClauseParser
+    | SoqlOffsetClauseParser
+    | null
 > {
     protected parse(): OrderByClause {
+        const fields: OrderByField[] = []
+        let next: SoqlBaseParser | null = this.next()
+
+        while (next instanceof SoqlOrderByFieldParser) {
+            const field = next.read()
+            fields.push(field)
+            next = next.next()
+        }
+
+        return { fields }
+    }
+
+    next():
+        | SoqlOrderByFieldParser
+        | SoqlLimitClauseParser
+        | SoqlOffsetClauseParser
+        | null {
+        if (this.consumed) {
+            this.skipWhitespace()
+            const keyword = this.peekKeyword()
+            if (!keyword) return null
+
+            switch (keyword) {
+                case 'LIMIT':
+                    return new SoqlLimitClauseParser(this.buffer)
+                case 'OFFSET':
+                    return new SoqlOffsetClauseParser(this.buffer)
+                default:
+                    return null
+            }
+        }
+
         this.skipWhitespace()
 
         this.buffer.expect(BYTE_MAP.o, BYTE_MAP.O) // consume o
@@ -955,52 +1013,64 @@ export class SoqlOrderByClauseParser extends SoqlBaseParser<
         this.buffer.expect(BYTE_MAP.y, BYTE_MAP.Y) // consume y
         this.skipWhitespace()
 
-        const fields: OrderByField[] = []
+        return new SoqlOrderByFieldParser(this.buffer)
+    }
+}
 
-        while (true) {
-            const fieldString = this.readString()
-            const field: FieldPath = { parts: fieldString.split('.') }
-
-            this.skipWhitespace()
-            const directionString = this.peekKeyword()
-            let direction: 'ASC' | 'DESC' = 'ASC'
-
-            if (directionString === 'ASC' || directionString === 'DESC') {
-                this.readKeyword() // consume direction
-                direction = directionString as 'ASC' | 'DESC'
-            }
-
-            fields.push({ field, direction })
-
-            this.skipWhitespace()
-            if (this.buffer.peek() === BYTE_MAP.comma) {
-                this.buffer.next() // consume comma
-                this.skipWhitespace()
-            } else {
-                break
-            }
+export class SoqlOrderByFieldParser extends SoqlBaseParser<
+    OrderByField,
+    | SoqlOrderByFieldParser
+    | SoqlLimitClauseParser
+    | SoqlOffsetClauseParser
+    | null
+> {
+    protected parse(): OrderByField {
+        const selectItemParser = new SoqlSelectItemParser(this.buffer)
+        const field = selectItemParser.read()
+        if (field.type === 'subquery') {
+            throw new SoqlParserError(
+                'Subqueries are not allowed in ORDER BY fields',
+            )
         }
 
-        return { fields }
+        const keyword = this.peekKeyword()
+
+        let direction: 'ASC' | 'DESC' | null = null
+        if (keyword === 'ASC' || keyword === 'DESC') {
+            direction = this.readKeyword() as 'ASC' | 'DESC'
+        }
+
+        return { field, direction }
     }
 
-    next(): SoqlLimitClauseParser | SoqlOffsetClauseParser | null {
+    next():
+        | SoqlOrderByFieldParser
+        | SoqlLimitClauseParser
+        | SoqlOffsetClauseParser
+        | null {
         if (!this.consumed) {
             this.read()
         }
 
-        this.skipWhitespace()
-        const keyword = this.peekKeyword()
-        if (!keyword) return null
+        if (this.buffer.peek() === BYTE_MAP.comma) {
+            this.buffer.next() // consume comma
+            this.skipWhitespace()
+        } else {
+            this.skipWhitespace()
+            const keyword = this.peekKeyword()
+            if (!keyword) return null
 
-        switch (keyword) {
-            case 'LIMIT':
-                return new SoqlLimitClauseParser(this.buffer)
-            case 'OFFSET':
-                return new SoqlOffsetClauseParser(this.buffer)
-            default:
-                return null
+            switch (keyword) {
+                case 'LIMIT':
+                    return new SoqlLimitClauseParser(this.buffer)
+                case 'OFFSET':
+                    return new SoqlOffsetClauseParser(this.buffer)
+                default:
+                    return null
+            }
         }
+
+        return new SoqlOrderByFieldParser(this.buffer)
     }
 }
 

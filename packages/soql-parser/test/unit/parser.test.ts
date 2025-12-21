@@ -10,6 +10,11 @@ import {
     SoqlSelectParser,
     SoqlWhereClauseParser,
     WhereClause,
+    SoqlHavingClauseParser,
+    SoqlQuery,
+    FromClause,
+    SelectClause,
+    OrderByClause,
 } from '../../src/index.js'
 
 describe('SOQL Parsing', () => {
@@ -37,26 +42,28 @@ describe('SOQL Parsing', () => {
             object.feed(soql)
 
             const fields = object.read()
-            expect(fields.items).toEqual([
-                {
-                    type: 'field',
-                    fieldName: { parts: ['Name'] },
-                },
-                {
-                    type: 'aggregate',
-                    functionName: 'COUNT',
-                    fieldName: { parts: ['Id'] },
-                },
-                {
-                    type: 'aggregate',
-                    functionName: 'MAX',
-                    fieldName: { parts: ['Age'] },
-                },
-                {
-                    type: 'field',
-                    fieldName: { parts: ['Sub', 'Field'] },
-                },
-            ])
+            expect(fields).toEqual({
+                items: [
+                    {
+                        type: 'field',
+                        fieldName: { parts: ['Name'] },
+                    },
+                    {
+                        type: 'aggregate',
+                        functionName: 'COUNT',
+                        fieldName: { parts: ['Id'] },
+                    },
+                    {
+                        type: 'aggregate',
+                        functionName: 'MAX',
+                        fieldName: { parts: ['Age'] },
+                    },
+                    {
+                        type: 'field',
+                        fieldName: { parts: ['Sub', 'Field'] },
+                    },
+                ],
+            } satisfies SelectClause)
         })
 
         it('should parse a select clause with aliases', () => {
@@ -67,29 +74,31 @@ describe('SOQL Parsing', () => {
             object.feed(soql)
 
             const fields = object.read()
-            expect(fields.items).toEqual([
-                {
-                    type: 'field',
-                    fieldName: { parts: ['Name'] },
-                },
-                {
-                    type: 'aggregate',
-                    functionName: 'COUNT',
-                    fieldName: { parts: ['Id'] },
-                    alias: 'cnt',
-                },
-                {
-                    type: 'aggregate',
-                    functionName: 'MAX',
-                    fieldName: { parts: ['Age'] },
-                    alias: 'maxAge',
-                },
-                {
-                    type: 'field',
-                    fieldName: { parts: ['Sub', 'Field'] },
-                    alias: 'f',
-                },
-            ])
+            expect(fields).toEqual({
+                items: [
+                    {
+                        type: 'field',
+                        fieldName: { parts: ['Name'] },
+                    },
+                    {
+                        type: 'aggregate',
+                        functionName: 'COUNT',
+                        fieldName: { parts: ['Id'] },
+                        alias: 'cnt',
+                    },
+                    {
+                        type: 'aggregate',
+                        functionName: 'MAX',
+                        fieldName: { parts: ['Age'] },
+                        alias: 'maxAge',
+                    },
+                    {
+                        type: 'field',
+                        fieldName: { parts: ['Sub', 'Field'] },
+                        alias: 'f',
+                    },
+                ],
+            } satisfies SelectClause)
         })
 
         it('should be able to subquery in select clause', () => {
@@ -100,37 +109,39 @@ describe('SOQL Parsing', () => {
             object.feed(soql)
 
             const fields = object.read()
-            expect(fields.items).toEqual([
-                {
-                    type: 'field',
-                    fieldName: { parts: ['Name'] },
-                },
-                {
-                    type: 'subquery',
-                    subquery: {
-                        type: 'soqlQuery',
-                        select: {
-                            items: [
-                                {
-                                    type: 'field',
-                                    fieldName: { parts: ['Id'] },
-                                },
-                                {
-                                    type: 'field',
-                                    fieldName: { parts: ['Subject'] },
-                                },
-                            ],
-                        },
-                        from: {
-                            objects: [
-                                {
-                                    name: 'Events',
-                                },
-                            ],
+            expect(fields).toEqual({
+                items: [
+                    {
+                        type: 'field',
+                        fieldName: { parts: ['Name'] },
+                    },
+                    {
+                        type: 'subquery',
+                        subquery: {
+                            type: 'soqlQuery',
+                            select: {
+                                items: [
+                                    {
+                                        type: 'field',
+                                        fieldName: { parts: ['Id'] },
+                                    },
+                                    {
+                                        type: 'field',
+                                        fieldName: { parts: ['Subject'] },
+                                    },
+                                ],
+                            },
+                            from: {
+                                objects: [
+                                    {
+                                        name: 'Events',
+                                    },
+                                ],
+                            },
                         },
                     },
-                },
-            ])
+                ],
+            } satisfies SelectClause)
         })
     })
 
@@ -149,7 +160,7 @@ describe('SOQL Parsing', () => {
                         name: 'Account',
                     },
                 ],
-            })
+            } satisfies FromClause)
         })
 
         it('should parse multiple from clauses', () => {
@@ -171,7 +182,7 @@ describe('SOQL Parsing', () => {
                         alias: 'c',
                     },
                 ],
-            })
+            } satisfies FromClause)
         })
     })
 
@@ -192,7 +203,10 @@ describe('SOQL Parsing', () => {
                     left: {
                         type: 'comparison',
                         left: {
-                            parts: ['Name'],
+                            type: 'field',
+                            fieldName: {
+                                parts: ['Name'],
+                            },
                         },
                         operator: '=',
                         right: {
@@ -206,7 +220,10 @@ describe('SOQL Parsing', () => {
                         left: {
                             type: 'comparison',
                             left: {
-                                parts: ['Age'],
+                                type: 'field',
+                                fieldName: {
+                                    parts: ['Age'],
+                                },
                             },
                             operator: '>=',
                             right: {
@@ -217,7 +234,10 @@ describe('SOQL Parsing', () => {
                         right: {
                             type: 'comparison',
                             left: {
-                                parts: ['IsActive'],
+                                type: 'field',
+                                fieldName: {
+                                    parts: ['IsActive'],
+                                },
                             },
                             operator: '=',
                             right: {
@@ -227,7 +247,7 @@ describe('SOQL Parsing', () => {
                         },
                     },
                 },
-            })
+            } satisfies WhereClause)
         })
 
         it('should parse a where clause with parentheses', () => {
@@ -251,7 +271,10 @@ describe('SOQL Parsing', () => {
                             left: {
                                 type: 'comparison',
                                 left: {
-                                    parts: ['Name'],
+                                    type: 'field',
+                                    fieldName: {
+                                        parts: ['Name'],
+                                    },
                                 },
                                 operator: '=',
                                 right: {
@@ -262,7 +285,10 @@ describe('SOQL Parsing', () => {
                             right: {
                                 type: 'comparison',
                                 left: {
-                                    parts: ['Age'],
+                                    type: 'field',
+                                    fieldName: {
+                                        parts: ['Age'],
+                                    },
                                 },
                                 operator: '>=',
                                 right: {
@@ -277,7 +303,10 @@ describe('SOQL Parsing', () => {
                         expr: {
                             type: 'comparison',
                             left: {
-                                parts: ['IsActive'],
+                                type: 'field',
+                                fieldName: {
+                                    parts: ['IsActive'],
+                                },
                             },
                             operator: '=',
                             right: {
@@ -287,7 +316,7 @@ describe('SOQL Parsing', () => {
                         },
                     },
                 },
-            })
+            } satisfies WhereClause)
         })
 
         it('should support date literals in where clause', () => {
@@ -302,7 +331,10 @@ describe('SOQL Parsing', () => {
                 expr: {
                     type: 'comparison',
                     left: {
-                        parts: ['CreatedDate'],
+                        type: 'field',
+                        fieldName: {
+                            parts: ['CreatedDate'],
+                        },
                     },
                     operator: '>=',
                     right: {
@@ -313,7 +345,7 @@ describe('SOQL Parsing', () => {
                         },
                     },
                 },
-            })
+            } satisfies WhereClause)
         })
 
         it('should support semi-join subqueries in where clause', () => {
@@ -329,7 +361,10 @@ describe('SOQL Parsing', () => {
                 expr: {
                     type: 'in',
                     left: {
-                        parts: ['Id'],
+                        type: 'field',
+                        fieldName: {
+                            parts: ['Id'],
+                        },
                     },
                     right: {
                         type: 'soqlQuery',
@@ -354,7 +389,10 @@ describe('SOQL Parsing', () => {
                             expr: {
                                 type: 'comparison',
                                 left: {
-                                    parts: ['Subject'],
+                                    type: 'field',
+                                    fieldName: {
+                                        parts: ['Subject'],
+                                    },
                                 },
                                 operator: '=',
                                 right: {
@@ -378,11 +416,36 @@ describe('SOQL Parsing', () => {
             object.eof = true
 
             const groupBy = object.read()
-            expect(groupBy.fields.map((x) => x.parts.join('.'))).toEqual([
-                'Name',
-                'Age',
-                'Sub.Field',
-            ])
+            expect(
+                groupBy.fields.map((x) => x.fieldName.parts.join('.')),
+            ).toEqual(['Name', 'Age', 'Sub.Field'])
+        })
+    })
+
+    describe('Having Clause Parsing', () => {
+        it('should parse a having clause', () => {
+            const soql = '  HAVING COUNT(Id) > 5  '
+            const object = new SoqlHavingClauseParser()
+
+            object.feed(soql)
+            object.eof = true
+
+            const having = object.read()
+            expect(having).toEqual({
+                expr: {
+                    type: 'comparison',
+                    left: {
+                        type: 'aggregate',
+                        functionName: 'COUNT',
+                        fieldName: { parts: ['Id'] },
+                    },
+                    operator: '>',
+                    right: {
+                        type: 'number',
+                        value: 5,
+                    },
+                },
+            })
         })
     })
 
@@ -395,20 +458,37 @@ describe('SOQL Parsing', () => {
             object.eof = true
 
             const orderBy = object.read()
-            expect(orderBy.fields).toEqual([
-                {
-                    field: { parts: ['Name'] },
-                    direction: 'ASC',
-                },
-                {
-                    field: { parts: ['Age'] },
-                    direction: 'DESC',
-                },
-                {
-                    field: { parts: ['Sub', 'Field'] },
-                    direction: 'ASC',
-                },
-            ])
+            expect(orderBy).toEqual({
+                fields: [
+                    {
+                        field: {
+                            type: 'field',
+                            fieldName: {
+                                parts: ['Name'],
+                            },
+                        },
+                        direction: 'ASC',
+                    },
+                    {
+                        field: {
+                            type: 'field',
+                            fieldName: {
+                                parts: ['Age'],
+                            },
+                        },
+                        direction: 'DESC',
+                    },
+                    {
+                        field: {
+                            type: 'field',
+                            fieldName: {
+                                parts: ['Sub', 'Field'],
+                            },
+                        },
+                        direction: null,
+                    },
+                ],
+            } satisfies OrderByClause)
         })
     })
 
@@ -486,14 +566,20 @@ describe('SOQL Parsing', () => {
                 groupBy: {
                     fields: [
                         {
-                            parts: ['Name'],
+                            type: 'field',
+                            fieldName: {
+                                parts: ['Name'],
+                            },
                         },
                     ],
                 },
                 having: {
                     expr: {
                         left: {
-                            parts: ['Name'],
+                            type: 'field',
+                            fieldName: {
+                                parts: ['Name'],
+                            },
                         },
                         operator: '!=',
                         right: {
@@ -510,7 +596,10 @@ describe('SOQL Parsing', () => {
                         {
                             direction: 'ASC',
                             field: {
-                                parts: ['Name'],
+                                type: 'field',
+                                fieldName: {
+                                    parts: ['Name'],
+                                },
                             },
                         },
                     ],
@@ -537,7 +626,10 @@ describe('SOQL Parsing', () => {
                 where: {
                     expr: {
                         left: {
-                            parts: ['IsActive'],
+                            type: 'field',
+                            fieldName: {
+                                parts: ['IsActive'],
+                            },
                         },
                         operator: '=',
                         right: {
@@ -547,7 +639,7 @@ describe('SOQL Parsing', () => {
                         type: 'comparison',
                     },
                 },
-            })
+            } satisfies SoqlQuery)
         })
 
         it('should chain next() calls until null for complete query', () => {

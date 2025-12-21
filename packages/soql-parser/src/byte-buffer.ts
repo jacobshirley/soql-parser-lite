@@ -253,7 +253,9 @@ export class ByteBuffer {
         const item = this.next()
 
         if (!itemType.includes(item as T)) {
-            throw new Error(`Expected ${itemType} but got ${item}`)
+            throw new Error(
+                `Expected ${itemType} but got ${item} (char: '${String.fromCharCode(item)}')`,
+            )
         }
 
         return item as T
