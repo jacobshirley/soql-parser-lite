@@ -1,11 +1,8 @@
+**[Examples](./EXAMPLES.md)** | **[Documentation](https://jacobshirley.github.io/soql-parser/v1)**
+
 # soql-parser
 
-A TypeScript/JavaScript parser for SOQL (Salesforce Object Query Language) that converts query strings into structured objects.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![npm version](https://badge.fury.io/js/soql-parser.svg)](https://www.npmjs.com/package/soql-parser)
-
-**[Examples](./EXAMPLES.md)** | **[Documentation](https://jacobshirley.github.io/soql-parser/v1)**
+A zero-dependency, TypeScript/JavaScript parser for SOQL (Salesforce Object Query Language) that converts query strings into structured objects.
 
 ## Features
 
@@ -115,39 +112,6 @@ const query = parseSoqlQuery(
 )
 ```
 
-## API Reference
-
-### `parseSoqlQuery(soql: string): SoqlQuery`
-
-Parses a SOQL query string and returns a structured representation.
-
-**Parameters:**
-
-- `soql` - The SOQL query string to parse
-
-**Returns:**
-
-- `SoqlQuery` - The parsed query structure
-
-**Throws:**
-
-- `SoqlParserError` - If the query is invalid or malformed
-
-### Parser Classes
-
-For advanced usage, you can use the individual parser classes directly:
-
-- `SoqlQueryParser` - Main parser for complete queries
-- `SoqlSelectParser` - Parser for SELECT clauses
-- `SoqlFromClauseParser` - Parser for FROM clauses
-- `SoqlWhereClauseParser` - Parser for WHERE clauses
-- `SoqlBooleanExprParser` - Parser for boolean expressions
-- `SoqlGroupByClauseParser` - Parser for GROUP BY clauses
-- `SoqlHavingClauseParser` - Parser for HAVING clauses
-- `SoqlOrderByClauseParser` - Parser for ORDER BY clauses
-- `SoqlLimitClauseParser` - Parser for LIMIT clauses
-- `SoqlOffsetClauseParser` - Parser for OFFSET clauses
-
 ## Supported SOQL Features
 
 - ✅ SELECT clause with fields, aggregate functions, and subqueries
@@ -166,22 +130,6 @@ For advanced usage, you can use the individual parser classes directly:
 - ✅ Field aliases
 
 ## Type Definitions
-
-The parser returns a fully typed `SoqlQuery` object with the following structure:
-
-```typescript
-interface SoqlQuery {
-    type: 'soqlQuery'
-    select: SelectClause
-    from: FromClause
-    where?: WhereClause
-    groupBy?: GroupByClause
-    having?: HavingClause
-    orderBy?: OrderByClause
-    limit?: number
-    offset?: number
-}
-```
 
 See the [full type definitions](./packages/soql-parser/src/types.ts) for more details.
 
