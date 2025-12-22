@@ -827,7 +827,7 @@ export class SoqlComparisonExpr<
         let left = SoqlField.fromBuffer(buffer)
         buffer.skipWhitespace()
 
-        const operatorString = buffer.readString().toLowerCase()
+        const operatorString = buffer.readString().toUpperCase()
         if (!OPERATORS.includes(operatorString as SoqlOperator)) {
             throw new SoqlParserError(
                 `Expected comparison operator, got: ${operatorString}`,
@@ -837,7 +837,7 @@ export class SoqlComparisonExpr<
 
         buffer.skipWhitespace()
 
-        if (operator === 'in') {
+        if (operator === 'IN' || operator === 'NIN') {
             let right: SoqlQuery | SoqlValueExpr[]
             const possibleQuery = buffer.tryParse(() =>
                 SoqlQuery.fromBuffer(buffer),
@@ -868,7 +868,7 @@ export class SoqlComparisonExpr<
                 right = values
             }
             expr = new SoqlInExpr({ left, right })
-        } else if (operator === 'includes' || operator === 'excludes') {
+        } else if (operator === 'INCLUDES' || operator === 'EXCLUDES') {
             const values: SoqlValueExpr[] = []
             buffer.expect(BYTE_MAP.openParen)
             buffer.skipWhitespace()
@@ -887,7 +887,7 @@ export class SoqlComparisonExpr<
             }
             buffer.expect(BYTE_MAP.closeParen)
 
-            if (operator === 'includes') {
+            if (operator === 'INCLUDES') {
                 expr = new SoqlIncludesExpr({ left, right: values })
             } else {
                 expr = new SoqlExcludesExpr({ left, right: values })
@@ -913,10 +913,10 @@ export class SoqlComparisonExpr<
                 case '>=':
                     expr = new SoqlGeExpr({ left, right })
                     break
-                case 'like':
+                case 'LIKE':
                     expr = new SoqlLikeExpr({ left, right })
                     break
-                case 'nlike':
+                case 'NLIKE':
                     expr = new SoqlNlineExpr({ left, right })
                     break
                 default:
@@ -1210,6 +1210,68 @@ export class SoqlOrderByClause extends SoqlObject {
         }
 
         return new SoqlOrderByClause(fields)
+    }
+}
+
+export class SoqlLimitClause extends SoqlObject {
+    value: number
+
+    constructor(value: number) {
+        super()
+        this.value = value
+    }
+
+    static fromString(string: string): number {
+        const stringBuffer = new SoqlStringBuffer(string)
+        return SoqlLimitClause.fromBuffer(stringBuffer)
+    }
+
+    static fromBuffer(buffer: SoqlStringBuffer): number {
+        const keyword = buffer.readKeyword()
+        if (keyword !== 'LIMIT') {
+            throw new SoqlParserError(`Expected LIMIT keyword, got: ${keyword}`)
+        }
+
+        buffer.skipWhitespace()
+        const limitString = buffer.readString()
+        const limit = Number(limitString)
+        if (isNaN(limit)) {
+            throw new SoqlParserError(`Invalid LIMIT value: ${limitString}`)
+        }
+
+        return limit
+    }
+}
+
+export class SoqlOffsetClause extends SoqlObject {
+    value: number
+
+    constructor(value: number) {
+        super()
+        this.value = value
+    }
+
+    static fromString(string: string): number {
+        const stringBuffer = new SoqlStringBuffer(string)
+        return SoqlOffsetClause.fromBuffer(stringBuffer)
+    }
+
+    static fromBuffer(buffer: SoqlStringBuffer): number {
+        const keyword = buffer.readKeyword()
+        if (keyword !== 'OFFSET') {
+            throw new SoqlParserError(
+                `Expected OFFSET keyword, got: ${keyword}`,
+            )
+        }
+
+        buffer.skipWhitespace()
+        const offsetString = buffer.readString()
+        const offset = Number(offsetString)
+        if (isNaN(offset)) {
+            throw new SoqlParserError(`Invalid OFFSET value: ${offsetString}`)
+        }
+
+        return offset
     }
 }
 

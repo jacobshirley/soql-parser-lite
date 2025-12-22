@@ -6,6 +6,8 @@ import {
     SoqlGroupByClause,
     SoqlHavingClause,
     SoqlOrderByClause,
+    SoqlLimitClause,
+    SoqlOffsetClause,
     SoqlQuery,
     SoqlAndExpr,
     SoqlAggregateField,
@@ -19,11 +21,6 @@ import {
     SoqlStringLiteral,
     SoqlParenExpr,
 } from '../../src/objects/field.js'
-import type {
-    WhereClause,
-    OrderByClause,
-    SelectClause,
-} from '../../src/types.js'
 
 describe('SOQL Parsing', () => {
     describe('Select Clause Parsing', () => {
@@ -281,13 +278,9 @@ describe('SOQL Parsing', () => {
 
         it('should support date literals in where clause', () => {
             const soql = ' where CreatedDate >= LAST_N_DAYS:30 '
-            const where = new SoqlWhereClauseParser()
+            const where = SoqlWhereClause.fromString(soql)
 
-            where.feed(soql)
-            where.eof = true
-
-            const whereClause = where.read()
-            expect(whereClause).toEqual({
+            expect(where).toEqual({
                 expr: {
                     type: 'comparison',
                     left: {
@@ -305,19 +298,15 @@ describe('SOQL Parsing', () => {
                         },
                     },
                 },
-            } satisfies WhereClause)
+            })
         })
 
         it('should support semi-join subqueries in where clause', () => {
             const soql =
                 " where Id IN (SELECT UserId FROM Event WHERE Subject = 'Meeting') "
-            const where = new SoqlWhereClauseParser()
+            const where = SoqlWhereClause.fromString(soql)
 
-            where.feed(soql)
-            where.eof = true
-
-            const whereClause = where.read()
-            expect(whereClause).toEqual({
+            expect(where).toEqual({
                 expr: {
                     type: 'in',
                     left: {
@@ -363,19 +352,15 @@ describe('SOQL Parsing', () => {
                         },
                     },
                 },
-            } satisfies WhereClause)
+            })
         })
     })
 
     describe('Group By Clause Parsing', () => {
         it('should parse a group by clause', () => {
             const soql = '  GROUP BY Name, Age, Sub.Field  '
-            const object = new SoqlGroupByClauseParser()
+            const groupBy = SoqlGroupByClause.fromString(soql)
 
-            object.feed(soql)
-            object.eof = true
-
-            const groupBy = object.read()
             expect(
                 groupBy.fields.map((x) => x.fieldName.parts.join('.')),
             ).toEqual(['Name', 'Age', 'Sub.Field'])
@@ -385,12 +370,7 @@ describe('SOQL Parsing', () => {
     describe('Having Clause Parsing', () => {
         it('should parse a having clause', () => {
             const soql = '  HAVING COUNT(Id) > 5  '
-            const object = new SoqlHavingClauseParser()
-
-            object.feed(soql)
-            object.eof = true
-
-            const having = object.read()
+            const having = SoqlHavingClause.fromString(soql)
             expect(having).toEqual({
                 expr: {
                     type: 'comparison',
@@ -412,12 +392,7 @@ describe('SOQL Parsing', () => {
     describe('Order By Clause Parsing', () => {
         it('should parse an order by clause', () => {
             const soql = '  ORDER BY Name ASC, Age DESC, Sub.Field  '
-            const object = new SoqlOrderByClauseParser()
-
-            object.feed(soql)
-            object.eof = true
-
-            const orderBy = object.read()
+            const orderBy = SoqlOrderByClause.fromString(soql)
             expect(orderBy).toEqual({
                 fields: [
                     {
@@ -455,12 +430,7 @@ describe('SOQL Parsing', () => {
     describe('Limit Clause Parsing', () => {
         it('should parse a limit clause', () => {
             const soql = '  LIMIT 100  '
-            const object = new SoqlLimitClauseParser()
-
-            object.feed(soql)
-            object.eof = true
-
-            const limit = object.read()
+            const limit = SoqlLimitClause.fromString(soql)
             expect(limit).toBe(100)
         })
     })
@@ -468,12 +438,7 @@ describe('SOQL Parsing', () => {
     describe('Offset Clause Parsing', () => {
         it('should parse an offset clause', () => {
             const soql = '  OFFSET 50  '
-            const object = new SoqlOffsetClauseParser()
-
-            object.feed(soql)
-            object.eof = true
-
-            const offset = object.read()
+            const offset = SoqlOffsetClause.fromString(soql)
             expect(offset).toBe(50)
         })
     })
@@ -482,12 +447,7 @@ describe('SOQL Parsing', () => {
         it('should parse a query with GROUP BY and HAVING', () => {
             const soql =
                 'SELECT Name FROM Account GROUP BY Name HAVING Name != null'
-            const object = new SoqlQueryParser()
-
-            object.feed(soql)
-            object.eof = true
-
-            const query = object.read()
+            const query = SoqlQuery.fromString(soql)
             expect(query.select.items.length).toBe(1)
             expect(query.from.objects[0].name).toBe('Account')
             expect(query.groupBy).toBeDefined()
@@ -499,12 +459,7 @@ describe('SOQL Parsing', () => {
         it('should parse a complete SOQL query with all clauses', () => {
             const soql =
                 'SELECT Name, COUNT(Id) cnt FROM Account WHERE IsActive = true GROUP BY Name HAVING Name != null ORDER BY Name ASC LIMIT 10 OFFSET 5'
-            const object = new SoqlQueryParser()
-
-            object.feed(soql)
-            object.eof = true
-
-            const query = object.read()
+            const query = SoqlQuery.fromString(soql)
             expect(query.select.items.length).toBe(2)
             expect(query.from.objects[0].name).toBe('Account')
             expect(query.where).toBeDefined()
