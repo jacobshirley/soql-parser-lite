@@ -24,7 +24,7 @@ import {
     SoqlNeExpr,
     SoqlOrderByField,
     SoqlGtExpr,
-} from '../../src/objects/field.js'
+} from '../../src/objects/index.js'
 
 describe('SOQL Parsing', () => {
     describe('Select Clause Parsing', () => {
@@ -74,7 +74,6 @@ describe('SOQL Parsing', () => {
             const soql =
                 '  SELECT Name, COUNT(Id), MAX(Age), Sub.Field, MAX(Sub.Field)  FROM User'
             const select = SoqlSelectClause.fromString(soql)
-            console.log(JSON.stringify(select, null, 2))
             expect(select).toEqual({
                 items: [
                     {
@@ -149,8 +148,6 @@ describe('SOQL Parsing', () => {
             const soql =
                 '  SELECT Name, (SELECT Id, Subject FROM Events)  FROM User'
             const select = SoqlSelectClause.fromString(soql)
-            console.log(JSON.stringify(select, null, 2))
-
             expect(select).toEqual({
                 items: [
                     {
@@ -229,8 +226,8 @@ describe('SOQL Parsing', () => {
                 "  WHERE Name = 'John' AND Age >= 30 OR IsActive = true "
             const where = SoqlWhereClause.fromString(soql)
             expect(where).toEqual(
-                new SoqlWhereClause(
-                    new SoqlOrExpr({
+                new SoqlWhereClause({
+                    expr: new SoqlOrExpr({
                         left: new SoqlAndExpr({
                             left: new SoqlEqlExpr({
                                 left: new SoqlField('Name'),
@@ -246,7 +243,7 @@ describe('SOQL Parsing', () => {
                             right: new SoqlBooleanLiteral(true),
                         }),
                     }),
-                ),
+                }),
             )
         })
 
@@ -255,8 +252,8 @@ describe('SOQL Parsing', () => {
                 "  where (Name = 'John' and Age >= 30) or (IsActive = true) "
             const whereClause = SoqlWhereClause.fromString(soql)
             expect(whereClause).toEqual(
-                new SoqlWhereClause(
-                    new SoqlOrExpr({
+                new SoqlWhereClause({
+                    expr: new SoqlOrExpr({
                         left: new SoqlParenExpr(
                             new SoqlAndExpr({
                                 left: new SoqlEqlExpr({
@@ -276,7 +273,7 @@ describe('SOQL Parsing', () => {
                             }),
                         ),
                     }),
-                ),
+                }),
             )
         })
 
@@ -285,15 +282,15 @@ describe('SOQL Parsing', () => {
             const where = SoqlWhereClause.fromString(soql)
 
             expect(where).toEqual(
-                new SoqlWhereClause(
-                    new SoqlGeExpr({
+                new SoqlWhereClause({
+                    expr: new SoqlGeExpr({
                         left: new SoqlField('CreatedDate'),
                         right: new SoqlDateLiteral({
                             type: 'LAST_N_DAYS',
                             n: 30,
                         }),
                     }),
-                ),
+                }),
             )
         })
 

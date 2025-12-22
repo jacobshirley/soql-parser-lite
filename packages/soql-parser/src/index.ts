@@ -16,5 +16,5 @@
  */
 
 export * from './types.js'
-export * from './parser.js'
+export * from './objects/index.js'
 export * from './helpers.js'
