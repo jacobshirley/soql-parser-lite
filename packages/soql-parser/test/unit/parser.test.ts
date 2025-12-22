@@ -17,6 +17,7 @@ import {
     SoqlNumberLiteral,
     SoqlGeExpr,
     SoqlStringLiteral,
+    SoqlParenExpr,
 } from '../../src/objects/field.js'
 import type {
     WhereClause,
@@ -222,11 +223,10 @@ describe('SOQL Parsing', () => {
     })
 
     describe('Where Clause Parsing', () => {
-        it.only('should parse a basic where clause', () => {
+        it('should parse a basic where clause', () => {
             const soql =
                 "  WHERE Name = 'John' AND Age >= 30 OR IsActive = true "
             const where = SoqlWhereClause.fromString(soql)
-            console.log(where)
             expect(where).toEqual(
                 new SoqlWhereClause(
                     new SoqlOrExpr({
@@ -249,73 +249,34 @@ describe('SOQL Parsing', () => {
             )
         })
 
-        it('should parse a where clause with parentheses', () => {
+        it.only('should parse a where clause with parentheses', () => {
             const soql =
                 "  where (Name = 'John' and Age >= 30) or (IsActive = true) "
-            const where = new SoqlWhereClauseParser()
-
-            where.feed(soql)
-            where.eof = true
-
-            const whereClause = where.read()
-            expect(whereClause).toEqual({
-                expr: {
-                    type: 'logical',
-                    operator: 'OR',
-                    left: {
-                        type: 'paren',
-                        expr: {
-                            type: 'logical',
-                            operator: 'AND',
-                            left: {
-                                type: 'comparison',
-                                left: {
-                                    type: 'field',
-                                    fieldName: {
-                                        parts: ['Name'],
-                                    },
-                                },
-                                operator: '=',
-                                right: {
-                                    type: 'string',
-                                    value: 'John',
-                                },
-                            },
-                            right: {
-                                type: 'comparison',
-                                left: {
-                                    type: 'field',
-                                    fieldName: {
-                                        parts: ['Age'],
-                                    },
-                                },
-                                operator: '>=',
-                                right: {
-                                    type: 'number',
-                                    value: 30,
-                                },
-                            },
-                        },
-                    },
-                    right: {
-                        type: 'paren',
-                        expr: {
-                            type: 'comparison',
-                            left: {
-                                type: 'field',
-                                fieldName: {
-                                    parts: ['IsActive'],
-                                },
-                            },
-                            operator: '=',
-                            right: {
-                                type: 'boolean',
-                                value: true,
-                            },
-                        },
-                    },
-                },
-            } satisfies WhereClause)
+            const whereClause = SoqlWhereClause.fromString(soql)
+            expect(whereClause).toEqual(
+                new SoqlWhereClause(
+                    new SoqlOrExpr({
+                        left: new SoqlParenExpr(
+                            new SoqlAndExpr({
+                                left: new SoqlEqlExpr({
+                                    left: new SoqlField('Name'),
+                                    right: new SoqlStringLiteral('John'),
+                                }),
+                                right: new SoqlGeExpr({
+                                    left: new SoqlField('Age'),
+                                    right: new SoqlNumberLiteral(30),
+                                }),
+                            }),
+                        ),
+                        right: new SoqlParenExpr(
+                            new SoqlEqlExpr({
+                                left: new SoqlField('IsActive'),
+                                right: new SoqlBooleanLiteral(true),
+                            }),
+                        ),
+                    }),
+                ),
+            )
         })
 
         it('should support date literals in where clause', () => {
