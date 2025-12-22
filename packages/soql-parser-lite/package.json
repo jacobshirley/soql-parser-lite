@@ -1,0 +1,66 @@
+{
+    "name": "soql-parser-lite",
+    "version": "1.0.14",
+    "description": "A TypeScript/JavaScript parser for SOQL (Salesforce Object Query Language) that converts query strings into structured objects with zero dependencies.",
+    "main": "dist/index.js",
+    "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "git+ssh://git@github.com/jacobshirley/soql-parser-lite.git"
+    },
+    "homepage": "https://jacobshirley.github.io/soql-parser-lite/v1",
+    "bugs": {
+        "url": "https://github.com/jacobshirley/soql-parser-lite/issues"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./*": {
+            "types": "./dist/*.d.ts",
+            "default": "./dist/*"
+        }
+    },
+    "scripts": {
+        "test:unit": "vitest run test/unit",
+        "test": "vitest run",
+        "compile": "pnpm compile:validate && tsc -p tsconfig.prod.json",
+        "compile:validate": "tsc -p tsconfig.json --noEmit",
+        "watch": "tsc -watch -p tsconfig.prod.json",
+        "watch:all": "tsc -watch -p tsconfig.json",
+        "prepack": "cp ../../README.md . && cp ../../EXAMPLES.md ."
+    },
+    "keywords": [
+        "soql",
+        "soql-parser-lite",
+        "salesforce",
+        "parser",
+        "parse",
+        "query",
+        "query-parser",
+        "typescript",
+        "zero-dependencies",
+        "lightweight",
+        "salesforce-query",
+        "soql-query",
+        "ast",
+        "syntax-tree"
+    ],
+    "author": "Jacob Shirley",
+    "license": "MIT",
+    "packageManager": "pnpm@10.25.0",
+    "devDependencies": {
+        "typescript": "^5.9.3",
+        "vitest": "^4.0.14",
+        "@vitest/browser": "^4.0.14",
+        "@vitest/browser-playwright": "^4.0.14",
+        "@vitest/coverage-v8": "^4.0.14",
+        "playwright": "^1.57.0"
+    },
+    "files": [
+        "dist",
+        "!**/*.tsbuildinfo",
+        "EXAMPLES.md"
+    ]
+}
