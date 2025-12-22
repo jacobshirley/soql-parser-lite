@@ -743,19 +743,25 @@ export abstract class SoqlBooleanExpr extends SoqlObject {
         return SoqlBooleanExpr.fromBuffer(stringBuffer)
     }
 
-    static fromBuffer(buffer: SoqlStringBuffer): SoqlBooleanExpr {
+    static fromBuffer(
+        buffer: SoqlStringBuffer,
+        allowAggregates = false,
+    ): SoqlBooleanExpr {
         // Parse OR expressions (lowest precedence)
-        return SoqlBooleanExpr.parseOrExpr(buffer)
+        return SoqlBooleanExpr.parseOrExpr(buffer, allowAggregates)
     }
 
-    private static parseOrExpr(buffer: SoqlStringBuffer): SoqlBooleanExpr {
-        let left = SoqlBooleanExpr.parseAndExpr(buffer)
+    private static parseOrExpr(
+        buffer: SoqlStringBuffer,
+        allowAggregates: boolean,
+    ): SoqlBooleanExpr {
+        let left = SoqlBooleanExpr.parseAndExpr(buffer, allowAggregates)
 
         buffer.skipWhitespace()
         while (buffer.peekKeyword() === 'OR') {
             buffer.readKeyword() // consume OR
             buffer.skipWhitespace()
-            const right = SoqlBooleanExpr.parseAndExpr(buffer)
+            const right = SoqlBooleanExpr.parseAndExpr(buffer, allowAggregates)
             left = new SoqlOrExpr({ left, right })
             buffer.skipWhitespace()
         }
@@ -763,14 +769,20 @@ export abstract class SoqlBooleanExpr extends SoqlObject {
         return left
     }
 
-    private static parseAndExpr(buffer: SoqlStringBuffer): SoqlBooleanExpr {
-        let left = SoqlBooleanExpr.parsePrimaryExpr(buffer)
+    private static parseAndExpr(
+        buffer: SoqlStringBuffer,
+        allowAggregates: boolean,
+    ): SoqlBooleanExpr {
+        let left = SoqlBooleanExpr.parsePrimaryExpr(buffer, allowAggregates)
 
         buffer.skipWhitespace()
         while (buffer.peekKeyword() === 'AND') {
             buffer.readKeyword() // consume AND
             buffer.skipWhitespace()
-            const right = SoqlBooleanExpr.parsePrimaryExpr(buffer)
+            const right = SoqlBooleanExpr.parsePrimaryExpr(
+                buffer,
+                allowAggregates,
+            )
             left = new SoqlAndExpr({ left, right })
             buffer.skipWhitespace()
         }
@@ -778,13 +790,16 @@ export abstract class SoqlBooleanExpr extends SoqlObject {
         return left
     }
 
-    private static parsePrimaryExpr(buffer: SoqlStringBuffer): SoqlBooleanExpr {
+    private static parsePrimaryExpr(
+        buffer: SoqlStringBuffer,
+        allowAggregates: boolean,
+    ): SoqlBooleanExpr {
         buffer.skipWhitespace()
 
         if (buffer.peek() === BYTE_MAP.openParen) {
-            return SoqlParenExpr.fromBuffer(buffer)
+            return SoqlParenExpr.fromBuffer(buffer, allowAggregates)
         } else {
-            return SoqlComparisonExpr.fromBuffer(buffer)
+            return SoqlComparisonExpr.fromBuffer(buffer, allowAggregates)
         }
     }
 }
@@ -821,7 +836,10 @@ export class SoqlComparisonExpr<
         return SoqlComparisonExpr.fromBuffer(stringBuffer)
     }
 
-    static fromBuffer(buffer: SoqlStringBuffer): SoqlComparisonExpr {
+    static fromBuffer(
+        buffer: SoqlStringBuffer,
+        allowAggregates = false,
+    ): SoqlComparisonExpr {
         let expr: SoqlComparisonExpr
 
         // Try to parse as aggregate function first (for HAVING clauses), then as field
@@ -830,6 +848,11 @@ export class SoqlComparisonExpr<
             SoqlAggregateField.fromBuffer(buffer),
         )
         if (possibleAggregate) {
+            if (!allowAggregates) {
+                throw new SoqlParserError(
+                    'Aggregate functions are not allowed in WHERE clause',
+                )
+            }
             left = possibleAggregate
         } else {
             left = SoqlField.fromBuffer(buffer)
@@ -979,10 +1002,13 @@ export class SoqlParenExpr extends SoqlBooleanExpr {
         return SoqlParenExpr.fromBuffer(stringBuffer)
     }
 
-    static fromBuffer(buffer: SoqlStringBuffer): SoqlParenExpr {
+    static fromBuffer(
+        buffer: SoqlStringBuffer,
+        allowAggregates = false,
+    ): SoqlParenExpr {
         buffer.expect(BYTE_MAP.openParen)
         buffer.skipWhitespace()
-        const expr = SoqlBooleanExpr.fromBuffer(buffer)
+        const expr = SoqlBooleanExpr.fromBuffer(buffer, allowAggregates)
         buffer.skipWhitespace()
         buffer.expect(BYTE_MAP.closeParen)
         return new SoqlParenExpr(expr)
@@ -1009,7 +1035,7 @@ export class SoqlWhereClause extends SoqlObject {
         }
 
         buffer.skipWhitespace()
-        const expr = SoqlBooleanExpr.fromBuffer(buffer)
+        const expr = SoqlBooleanExpr.fromBuffer(buffer, false) // Don't allow aggregates in WHERE
         return new SoqlWhereClause(expr)
     }
 }
@@ -1134,7 +1160,7 @@ export class SoqlHavingClause extends SoqlObject {
         }
 
         buffer.skipWhitespace()
-        const expr = SoqlBooleanExpr.fromBuffer(buffer)
+        const expr = SoqlBooleanExpr.fromBuffer(buffer, true) // Allow aggregates in HAVING
         return new SoqlHavingClause(expr)
     }
 }
