@@ -11,7 +11,7 @@ importers:
   .:
     dependencies:
       soql-parser-lite:
-        specifier: 1.0.14
+        specifier: 1.0.0
         version: link:packages/soql-parser-lite
     devDependencies:
       '@commitlint/cli':
