@@ -41,19 +41,45 @@ const query = parseSoqlQuery(
     'SELECT Id, Name FROM Account WHERE Status = "Active" LIMIT 10',
 )
 
-console.log(query)
-// {
-//   type: 'soqlQuery',
-//   select: {
-//     items: [
-//       { type: 'field', fieldName: { parts: ['Id'] } },
-//       { type: 'field', fieldName: { parts: ['Name'] } }
-//     ]
-//   },
-//   from: { objects: [{ name: 'Account' }] },
-//   where: { expr: { type: 'comparison', ... } },
-//   limit: 10
-// }
+console.log(JSON.stringify(query, null, 2))
+
+// Output:
+/*
+{
+  "select": {
+    "items": [
+      {
+        "item": {
+          "name": "Id"
+        }
+      },
+      {
+        "item": {
+          "name": "Name"
+        }
+      }
+    ]
+  },
+  "from": {
+    "objects": [
+      {
+        "name": "Account"
+      }
+    ]
+  },
+  "where": {
+    "expr": {
+      "left": {
+        "name": "Status"
+      },
+      "right": {
+        "value": "Active"
+      }
+    }
+  },
+  "limit": 10
+}
+*/
 ```
 
 ## Usage Examples
