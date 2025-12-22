@@ -1,5 +1,5 @@
 import { BYTE_MAP } from '../byte-map'
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 import { SoqlValueExpr } from './SoqlValueExpr'
 import { SoqlQuery } from './SoqlQuery'
@@ -8,7 +8,7 @@ import { SoqlAggregateField } from './SoqlAggregateField'
 import { SoqlField } from './SoqlField'
 import { OPERATORS, SoqlOperator } from '../types'
 
-export abstract class SoqlBooleanExpr extends SoqlObject {
+export abstract class SoqlBooleanExpr extends SoqlBase {
     static fromString(string: string): SoqlBooleanExpr {
         const stringBuffer = new SoqlStringBuffer(string)
         return SoqlBooleanExpr.fromBuffer(stringBuffer)
@@ -75,9 +75,7 @@ export abstract class SoqlBooleanExpr extends SoqlObject {
     }
 }
 
-export class SoqlComparisonExpr<
-    T extends SoqlObject = SoqlValueExpr,
-> extends SoqlBooleanExpr {
+export class SoqlComparisonExpr<T = SoqlValueExpr> extends SoqlBooleanExpr {
     left: SoqlValueExpr
     right: T
 
@@ -96,7 +94,7 @@ export class SoqlComparisonExpr<
         buffer: SoqlStringBuffer,
         allowAggregates = false,
     ): SoqlComparisonExpr {
-        let expr: SoqlComparisonExpr
+        let expr: SoqlComparisonExpr<any>
 
         // Try to parse as aggregate function first (for HAVING clauses), then as field
         let left: SoqlValueExpr

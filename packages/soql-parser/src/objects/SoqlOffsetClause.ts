@@ -1,8 +1,8 @@
 import { SoqlParserError } from '../errors'
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 
-export class SoqlOffsetClause extends SoqlObject {
+export class SoqlOffsetClause extends SoqlBase {
     value: number
 
     constructor(value: number) {

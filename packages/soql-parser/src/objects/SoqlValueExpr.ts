@@ -1,11 +1,11 @@
 import { BYTE_MAP } from '../byte-map'
 import { SoqlParserError } from '../errors'
 import { DATE_LITERALS, DATE_LITERALS_DYNAMIC } from '../types'
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 
 // Base class for all value expressions
-export abstract class SoqlValueExpr extends SoqlObject {
+export abstract class SoqlValueExpr extends SoqlBase {
     static fromString(string: string): SoqlValueExpr {
         const stringBuffer = new SoqlStringBuffer(string)
         return SoqlValueExpr.fromBuffer(stringBuffer)

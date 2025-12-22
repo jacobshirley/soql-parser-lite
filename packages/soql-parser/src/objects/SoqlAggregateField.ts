@@ -1,9 +1,9 @@
 import { BYTE_MAP } from '../byte-map'
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 import { SoqlField } from './SoqlField'
 
-export class SoqlAggregateField extends SoqlObject {
+export class SoqlAggregateField extends SoqlBase {
     functionName: string
     field: SoqlField
 

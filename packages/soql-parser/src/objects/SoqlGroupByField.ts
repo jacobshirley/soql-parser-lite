@@ -1,9 +1,9 @@
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 import { SoqlField } from './SoqlField'
 import { SoqlAggregateField } from './SoqlAggregateField'
 
-export class SoqlGroupByField extends SoqlObject {
+export class SoqlGroupByField extends SoqlBase {
     field: SoqlField | SoqlAggregateField
 
     constructor(options: { field: SoqlField | SoqlAggregateField }) {

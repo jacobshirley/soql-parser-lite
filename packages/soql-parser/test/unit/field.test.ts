@@ -24,6 +24,8 @@ import {
     SoqlNeExpr,
     SoqlOrderByField,
     SoqlGtExpr,
+    SoqlSubquery,
+    SoqlFromObject,
 } from '../../src/objects/index.js'
 
 describe('SOQL Parsing', () => {
@@ -148,42 +150,38 @@ describe('SOQL Parsing', () => {
             const soql =
                 '  SELECT Name, (SELECT Id, Subject FROM Events)  FROM User'
             const select = SoqlSelectClause.fromString(soql)
-            expect(select).toEqual({
-                items: [
-                    {
-                        item: {
-                            name: 'Name',
-                        },
-                    },
-                    {
-                        item: {
-                            subquery: {
-                                select: {
-                                    items: [
-                                        {
-                                            item: {
-                                                name: 'Id',
-                                            },
-                                        },
-                                        {
-                                            item: {
-                                                name: 'Subject',
-                                            },
-                                        },
-                                    ],
-                                },
-                                from: {
-                                    objects: [
-                                        {
-                                            name: 'Events',
-                                        },
-                                    ],
-                                },
-                            },
-                        },
-                    },
-                ],
-            } satisfies SoqlSelectClause)
+            expect(select).toEqual(
+                new SoqlSelectClause({
+                    items: [
+                        new SoqlSelectItem({
+                            item: new SoqlField('Name'),
+                        }),
+                        new SoqlSelectItem({
+                            item: new SoqlSubquery({
+                                subquery: new SoqlQuery({
+                                    select: new SoqlSelectClause({
+                                        items: [
+                                            new SoqlSelectItem({
+                                                item: new SoqlField('Id'),
+                                            }),
+                                            new SoqlSelectItem({
+                                                item: new SoqlField('Subject'),
+                                            }),
+                                        ],
+                                    }),
+                                    from: new SoqlFromClause({
+                                        objects: [
+                                            new SoqlFromObject({
+                                                name: 'Events',
+                                            }),
+                                        ],
+                                    }),
+                                }),
+                            }),
+                        }),
+                    ],
+                }),
+            )
         })
     })
 
@@ -205,18 +203,14 @@ describe('SOQL Parsing', () => {
             const soql = '  FROM Account a, Contact c '
             const from = SoqlFromClause.fromString(soql)
 
-            expect(from).toEqual({
-                objects: [
-                    {
-                        name: 'Account',
-                        alias: 'a',
-                    },
-                    {
-                        name: 'Contact',
-                        alias: 'c',
-                    },
-                ],
-            } satisfies SoqlFromClause)
+            expect(from).toEqual(
+                new SoqlFromClause({
+                    objects: [
+                        new SoqlFromObject({ name: 'Account', alias: 'a' }),
+                        new SoqlFromObject({ name: 'Contact', alias: 'c' }),
+                    ],
+                }),
+            )
         })
     })
 

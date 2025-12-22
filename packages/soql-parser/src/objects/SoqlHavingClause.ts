@@ -1,9 +1,9 @@
 import { SoqlParserError } from '../errors'
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 import { SoqlBooleanExpr } from './SoqlBooleanExpr'
 
-export class SoqlHavingClause extends SoqlObject {
+export class SoqlHavingClause extends SoqlBase {
     expr: SoqlBooleanExpr
 
     constructor(expr: SoqlBooleanExpr) {

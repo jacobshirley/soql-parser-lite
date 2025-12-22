@@ -1,9 +1,9 @@
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 import { SoqlField } from './SoqlField'
 import { SoqlAggregateField } from './SoqlAggregateField'
 
-export class SoqlOrderByField extends SoqlObject {
+export class SoqlOrderByField extends SoqlBase {
     field: SoqlField | SoqlAggregateField
     direction: 'ASC' | 'DESC' | null
 

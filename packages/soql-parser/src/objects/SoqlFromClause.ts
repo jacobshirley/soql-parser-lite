@@ -1,10 +1,10 @@
 import { BYTE_MAP } from '../byte-map'
 import { SoqlParserError } from '../errors'
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 import { SoqlFromObject } from './SoqlFromObject'
 
-export class SoqlFromClause extends SoqlObject {
+export class SoqlFromClause extends SoqlBase {
     objects: SoqlFromObject[]
 
     constructor(options: { objects: SoqlFromObject[] }) {

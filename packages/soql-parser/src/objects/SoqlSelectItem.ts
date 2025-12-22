@@ -1,11 +1,11 @@
 import { BYTE_MAP } from '../byte-map'
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 import { SoqlField } from './SoqlField'
 import { SoqlAggregateField } from './SoqlAggregateField'
 import { SoqlSubquery } from './SoqlSubquery'
 
-export class SoqlSelectItem extends SoqlObject {
+export class SoqlSelectItem extends SoqlBase {
     item: SoqlField | SoqlAggregateField | SoqlSubquery
     alias?: string
 

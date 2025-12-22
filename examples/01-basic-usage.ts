@@ -44,7 +44,7 @@ console.log(
 )
 console.log(
     'Select items:',
-    aggregateQuery.select.items.map((item) => item.type),
+    aggregateQuery.select.items.map((item) => item.item.type),
 )
 console.log('Has GROUP BY:', !!aggregateQuery.groupBy)
 console.log()

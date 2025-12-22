@@ -1,5 +1,5 @@
 // Core
-export { SoqlObject } from './SoqlObject'
+export { SoqlBase } from './SoqlBase'
 export { SoqlStringBuffer } from './SoqlStringBuffer'
 
 // Value Expressions (all in one file to avoid circular dependencies)

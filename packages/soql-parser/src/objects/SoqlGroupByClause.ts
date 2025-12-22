@@ -1,10 +1,10 @@
 import { BYTE_MAP } from '../byte-map'
 import { SoqlParserError } from '../errors'
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 import { SoqlGroupByField } from './SoqlGroupByField'
 
-export class SoqlGroupByClause extends SoqlObject {
+export class SoqlGroupByClause extends SoqlBase {
     fields: SoqlGroupByField[]
     groupingFunction?: 'ROLLUP' | 'CUBE'
 

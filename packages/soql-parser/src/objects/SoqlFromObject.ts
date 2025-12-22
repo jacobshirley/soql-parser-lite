@@ -1,7 +1,7 @@
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 
-export class SoqlFromObject extends SoqlObject {
+export class SoqlFromObject extends SoqlBase {
     name: string
     alias?: string
 

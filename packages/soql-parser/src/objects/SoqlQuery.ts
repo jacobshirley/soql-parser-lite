@@ -1,5 +1,5 @@
 import { SoqlParserError } from '../errors'
-import { SoqlObject } from './SoqlObject'
+import { SoqlBase } from './SoqlBase'
 import { SoqlStringBuffer } from './SoqlStringBuffer'
 import { SoqlSelectClause } from './SoqlSelectClause'
 import { SoqlFromClause } from './SoqlFromClause'
@@ -8,7 +8,7 @@ import { SoqlGroupByClause } from './SoqlGroupByClause'
 import { SoqlHavingClause } from './SoqlHavingClause'
 import { SoqlOrderByClause } from './SoqlOrderByClause'
 
-export class SoqlQuery extends SoqlObject {
+export class SoqlQuery extends SoqlBase {
     select: SoqlSelectClause
     from: SoqlFromClause
     where?: SoqlWhereClause
