@@ -1,6 +1,6 @@
 {
     "name": "soql-parser-lite",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "A TypeScript/JavaScript parser for SOQL (Salesforce Object Query Language) that converts query strings into structured objects with zero dependencies.",
     "main": "dist/index.js",
     "type": "module",
