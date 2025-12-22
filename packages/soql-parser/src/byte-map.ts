@@ -52,6 +52,9 @@ export const BYTE_MAP = {
     B: 0x42,
     y: 0x79,
     Y: 0x59,
+    singleQuote: 0x27,
+    doubleQuote: 0x22,
+    colon: 0x3a,
 }
 
 /**

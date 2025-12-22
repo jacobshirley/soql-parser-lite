@@ -1,5 +1,28 @@
 import { describe, it, expect, assert } from 'vitest'
-import { SoqlFromClause, SoqlSelectClause } from '../../src/objects/field.js'
+import {
+    SoqlFromClause,
+    SoqlSelectClause,
+    SoqlWhereClause,
+    SoqlGroupByClause,
+    SoqlHavingClause,
+    SoqlOrderByClause,
+    SoqlQuery,
+    SoqlAndExpr,
+    SoqlAggregateField,
+    SoqlField,
+    SoqlSelectItem,
+    SoqlOrExpr,
+    SoqlBooleanLiteral,
+    SoqlEqlExpr,
+    SoqlNumberLiteral,
+    SoqlGeExpr,
+    SoqlStringLiteral,
+} from '../../src/objects/field.js'
+import type {
+    WhereClause,
+    OrderByClause,
+    SelectClause,
+} from '../../src/types.js'
 
 describe('SOQL Parsing', () => {
     describe('Select Clause Parsing', () => {
@@ -9,34 +32,34 @@ describe('SOQL Parsing', () => {
             const select = SoqlSelectClause.fromString(soql)
             expect(select).toMatchInlineSnapshot(`
               SoqlSelectClause {
-                "fields": [
-                  SoqlSelectField {
+                "items": [
+                  SoqlSelectItem {
                     "alias": undefined,
-                    "field": SoqlField {
+                    "item": SoqlField {
                       "name": "Name",
                     },
                   },
-                  SoqlSelectField {
+                  SoqlSelectItem {
                     "alias": undefined,
-                    "field": SoqlField {
+                    "item": SoqlField {
                       "name": "Age",
                     },
                   },
-                  SoqlSelectField {
+                  SoqlSelectItem {
                     "alias": undefined,
-                    "field": SoqlField {
+                    "item": SoqlField {
                       "name": "IsActive",
                     },
                   },
-                  SoqlSelectField {
+                  SoqlSelectItem {
                     "alias": undefined,
-                    "field": SoqlField {
+                    "item": SoqlField {
                       "name": "Sub.Field",
                     },
                   },
-                  SoqlSelectField {
+                  SoqlSelectItem {
                     "alias": undefined,
-                    "field": SoqlField {
+                    "item": SoqlField {
                       "name": "Sub.Field2",
                     },
                   },
@@ -51,14 +74,14 @@ describe('SOQL Parsing', () => {
             const select = SoqlSelectClause.fromString(soql)
             console.log(JSON.stringify(select, null, 2))
             expect(select).toEqual({
-                fields: [
+                items: [
                     {
-                        field: {
+                        item: {
                             name: 'Name',
                         },
                     },
                     {
-                        field: {
+                        item: {
                             functionName: 'COUNT',
                             field: {
                                 name: 'Id',
@@ -66,7 +89,7 @@ describe('SOQL Parsing', () => {
                         },
                     },
                     {
-                        field: {
+                        item: {
                             functionName: 'MAX',
                             field: {
                                 name: 'Age',
@@ -74,12 +97,12 @@ describe('SOQL Parsing', () => {
                         },
                     },
                     {
-                        field: {
+                        item: {
                             name: 'Sub.Field',
                         },
                     },
                     {
-                        field: {
+                        item: {
                             functionName: 'MAX',
                             field: {
                                 name: 'Sub.Field',
@@ -95,78 +118,73 @@ describe('SOQL Parsing', () => {
                 '  SELECT Name, COUNT(Id) cnt, MAX(Age) maxAge , Sub.Field f  FROM User'
             const select = SoqlSelectClause.fromString(soql)
 
-            const aliasedFields = select.fields.filter(
+            const aliasedFields = select.items.filter(
                 (x) => x.alias !== undefined,
             )
             expect(aliasedFields).toEqual([
-                {
-                    field: {
+                new SoqlSelectItem({
+                    item: new SoqlAggregateField({
                         functionName: 'COUNT',
-                        field: {
-                            name: 'Id',
-                        },
-                    },
+                        field: new SoqlField('Id'),
+                    }),
                     alias: 'cnt',
-                },
-                {
-                    field: {
+                }),
+                new SoqlSelectItem({
+                    item: new SoqlAggregateField({
                         functionName: 'MAX',
-                        field: {
-                            name: 'Age',
-                        },
-                    },
+                        field: new SoqlField('Age'),
+                    }),
                     alias: 'maxAge',
-                },
-                {
-                    field: {
-                        name: 'Sub.Field',
-                    },
+                }),
+                new SoqlSelectItem({
+                    item: new SoqlField('Sub.Field'),
                     alias: 'f',
-                },
+                }),
             ])
         })
 
         it('should be able to subquery in select clause', () => {
             const soql =
                 '  SELECT Name, (SELECT Id, Subject FROM Events)  FROM User'
-            const object = new SoqlSelectParser()
+            const select = SoqlSelectClause.fromString(soql)
+            console.log(JSON.stringify(select, null, 2))
 
-            object.feed(soql)
-
-            const fields = object.read()
-            expect(fields).toEqual({
+            expect(select).toEqual({
                 items: [
                     {
-                        type: 'field',
-                        fieldName: { parts: ['Name'] },
+                        item: {
+                            name: 'Name',
+                        },
                     },
                     {
-                        type: 'subquery',
-                        subquery: {
-                            type: 'soqlQuery',
-                            select: {
-                                items: [
-                                    {
-                                        type: 'field',
-                                        fieldName: { parts: ['Id'] },
-                                    },
-                                    {
-                                        type: 'field',
-                                        fieldName: { parts: ['Subject'] },
-                                    },
-                                ],
-                            },
-                            from: {
-                                objects: [
-                                    {
-                                        name: 'Events',
-                                    },
-                                ],
+                        item: {
+                            subquery: {
+                                select: {
+                                    items: [
+                                        {
+                                            item: {
+                                                name: 'Id',
+                                            },
+                                        },
+                                        {
+                                            item: {
+                                                name: 'Subject',
+                                            },
+                                        },
+                                    ],
+                                },
+                                from: {
+                                    objects: [
+                                        {
+                                            name: 'Events',
+                                        },
+                                    ],
+                                },
                             },
                         },
                     },
                 ],
-            } satisfies SelectClause)
+            } satisfies SoqlSelectClause)
         })
     })
 
@@ -208,63 +226,27 @@ describe('SOQL Parsing', () => {
             const soql =
                 "  WHERE Name = 'John' AND Age >= 30 OR IsActive = true "
             const where = SoqlWhereClause.fromString(soql)
-
-            where.feed(soql)
-            where.eof = true
-
-            const whereClause = where.read()
-            expect(whereClause).toEqual({
-                expr: {
-                    type: 'logical',
-                    operator: 'AND',
-                    left: {
-                        type: 'comparison',
-                        left: {
-                            type: 'field',
-                            fieldName: {
-                                parts: ['Name'],
-                            },
-                        },
-                        operator: '=',
-                        right: {
-                            type: 'string',
-                            value: 'John',
-                        },
-                    },
-                    right: {
-                        type: 'logical',
-                        operator: 'OR',
-                        left: {
-                            type: 'comparison',
-                            left: {
-                                type: 'field',
-                                fieldName: {
-                                    parts: ['Age'],
-                                },
-                            },
-                            operator: '>=',
-                            right: {
-                                type: 'number',
-                                value: 30,
-                            },
-                        },
-                        right: {
-                            type: 'comparison',
-                            left: {
-                                type: 'field',
-                                fieldName: {
-                                    parts: ['IsActive'],
-                                },
-                            },
-                            operator: '=',
-                            right: {
-                                type: 'boolean',
-                                value: true,
-                            },
-                        },
-                    },
-                },
-            } satisfies WhereClause)
+            console.log(where)
+            expect(where).toEqual(
+                new SoqlWhereClause(
+                    new SoqlOrExpr({
+                        left: new SoqlAndExpr({
+                            left: new SoqlEqlExpr({
+                                left: new SoqlField('Name'),
+                                right: new SoqlStringLiteral('John'),
+                            }),
+                            right: new SoqlGeExpr({
+                                left: new SoqlField('Age'),
+                                right: new SoqlNumberLiteral(30),
+                            }),
+                        }),
+                        right: new SoqlEqlExpr({
+                            left: new SoqlField('IsActive'),
+                            right: new SoqlBooleanLiteral(true),
+                        }),
+                    }),
+                ),
+            )
         })
 
         it('should parse a where clause with parentheses', () => {

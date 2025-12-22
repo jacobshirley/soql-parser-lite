@@ -128,7 +128,12 @@ export const OPERATORS = [
     '>=',
     'in',
     'like',
+    'nlike',
+    'includes',
+    'excludes',
 ] as const
+
+export type SoqlOperator = (typeof OPERATORS)[number]
 
 /**
  * Represents a comparison expression (field operator value).

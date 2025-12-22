@@ -41,7 +41,7 @@ export class ByteBuffer {
     /** Whether end of file has been signaled */
     eof: boolean = false
     /** Current position in the buffer */
-    bufferIndex: number = 0
+    position: number = 0
     /** Whether the buffer is locked against compaction */
     locked: boolean = false
     /** Whether to allow exceeding the buffer size temporarily */
@@ -193,7 +193,7 @@ export class ByteBuffer {
      * @returns True if no more input is available
      */
     atEof(): boolean {
-        return this.eof && this.bufferIndex >= this.buffer.length
+        return this.eof && this.position >= this.buffer.length
     }
 
     /**
@@ -204,7 +204,7 @@ export class ByteBuffer {
      * @throws NoMoreTokensError if more input is needed and EOF not signaled
      */
     peek(ahead: number = 0): number | null {
-        const index = this.bufferIndex + ahead
+        const index = this.position + ahead
         if (index >= this.buffer.length) {
             if (!this.eof) {
                 if (!this.readStream()) {
@@ -226,7 +226,7 @@ export class ByteBuffer {
      * @throws EofReachedError if at EOF and no more items available
      */
     next(): number {
-        if (this.bufferIndex >= this.buffer.length) {
+        if (this.position >= this.buffer.length) {
             if (this.readStream()) {
                 return this.next()
             }
@@ -238,7 +238,7 @@ export class ByteBuffer {
             throw new EofReachedError('End of file reached')
         }
         this.inputOffset++
-        return this.buffer[this.bufferIndex++]
+        return this.buffer[this.position++]
     }
 
     /**
@@ -265,9 +265,9 @@ export class ByteBuffer {
      * Compacts the buffer by removing consumed items
      */
     compact(): void {
-        if (!this.locked && this.bufferIndex > 0) {
-            this.buffer = this.buffer.slice(this.bufferIndex)
-            this.bufferIndex = 0
+        if (!this.locked && this.position > 0) {
+            this.buffer = this.buffer.slice(this.position)
+            this.position = 0
         }
     }
 
@@ -278,7 +278,7 @@ export class ByteBuffer {
      * @returns boolean indicating whether to compact the buffer
      */
     canCompact(): boolean {
-        return this.bufferIndex > this.maxBufferSize
+        return this.position > this.maxBufferSize
     }
 
     /**
@@ -295,7 +295,7 @@ export class ByteBuffer {
         onFail?: (e: Error) => void,
         catchAll: boolean = false,
     ): T | undefined {
-        const bufferIndex = this.bufferIndex
+        const bufferIndex = this.position
         try {
             const result = tryFn()
             if (this.canCompact()) {
@@ -307,7 +307,7 @@ export class ByteBuffer {
                 e instanceof Error &&
                 (catchAll || e instanceof NoMoreTokensError)
             ) {
-                this.bufferIndex = bufferIndex
+                this.position = bufferIndex
                 onFail?.(e)
             } else {
                 throw e
@@ -326,15 +326,13 @@ export class ByteBuffer {
         return [
             'ByteBuffer {',
             `  buffer: [${this.buffer.join(', ')}],`,
-            `  bufferIndex: ${this.bufferIndex},`,
+            `  bufferIndex: ${this.position},`,
             `  inputOffset: ${this.inputOffset},`,
             `  outputOffset: ${this.outputOffset},`,
             `  eof: ${this.eof},`,
             `  as string: ${bytesToString(new Uint8Array(this.buffer))}`,
             '  as string from bufferIndex: ' +
-                bytesToString(
-                    new Uint8Array(this.buffer.slice(this.bufferIndex)),
-                ),
+                bytesToString(new Uint8Array(this.buffer.slice(this.position))),
             '}',
         ].join('\n')
     }
