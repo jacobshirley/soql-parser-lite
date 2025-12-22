@@ -824,7 +824,17 @@ export class SoqlComparisonExpr<
     static fromBuffer(buffer: SoqlStringBuffer): SoqlComparisonExpr {
         let expr: SoqlComparisonExpr
 
-        let left = SoqlField.fromBuffer(buffer)
+        // Try to parse as aggregate function first (for HAVING clauses), then as field
+        let left: SoqlValueExpr
+        const possibleAggregate = buffer.tryParse(() =>
+            SoqlAggregateField.fromBuffer(buffer),
+        )
+        if (possibleAggregate) {
+            left = possibleAggregate
+        } else {
+            left = SoqlField.fromBuffer(buffer)
+        }
+
         buffer.skipWhitespace()
 
         const operatorString = buffer.readString().toUpperCase()
@@ -839,17 +849,21 @@ export class SoqlComparisonExpr<
 
         if (operator === 'IN' || operator === 'NIN') {
             let right: SoqlQuery | SoqlValueExpr[]
-            const possibleQuery = buffer.tryParse(() =>
-                SoqlQuery.fromBuffer(buffer),
-            )
 
-            if (possibleQuery) {
-                right = possibleQuery
-            } else {
-                const values: SoqlValueExpr[] = []
-                buffer.expect(BYTE_MAP.openParen)
+            // Check if this is a subquery (SELECT) or a list of values
+            buffer.expect(BYTE_MAP.openParen)
+            buffer.skipWhitespace()
+
+            const nextStr = buffer.peekString()
+            if (nextStr.toUpperCase() === 'SELECT') {
+                // Parse as subquery
+                const query = SoqlQuery.fromBuffer(buffer)
                 buffer.skipWhitespace()
-
+                buffer.expect(BYTE_MAP.closeParen)
+                right = query
+            } else {
+                // Parse as list of values
+                const values: SoqlValueExpr[] = []
                 while (true) {
                     const value = SoqlValueExpr.fromBuffer(buffer)
                     values.push(value)
@@ -867,7 +881,12 @@ export class SoqlComparisonExpr<
                 buffer.expect(BYTE_MAP.closeParen)
                 right = values
             }
-            expr = new SoqlInExpr({ left, right })
+
+            if (operator === 'IN') {
+                expr = new SoqlInExpr({ left, right })
+            } else {
+                expr = new SoqlNinExpr({ left, right })
+            }
         } else if (operator === 'INCLUDES' || operator === 'EXCLUDES') {
             const values: SoqlValueExpr[] = []
             buffer.expect(BYTE_MAP.openParen)
@@ -973,13 +992,9 @@ export class SoqlParenExpr extends SoqlBooleanExpr {
 export class SoqlWhereClause extends SoqlObject {
     expr: SoqlBooleanExpr // BooleanExpr type
 
-    constructor(exprOrOptions: SoqlBooleanExpr | { expr: SoqlBooleanExpr }) {
+    constructor(exprOrOptions: SoqlBooleanExpr) {
         super()
-        if ('expr' in exprOrOptions) {
-            this.expr = exprOrOptions.expr
-        } else {
-            this.expr = exprOrOptions
-        }
+        this.expr = exprOrOptions
     }
 
     static fromString(string: string): SoqlWhereClause {
