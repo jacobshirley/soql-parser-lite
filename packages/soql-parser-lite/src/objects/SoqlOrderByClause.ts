@@ -1,8 +1,8 @@
-import { BYTE_MAP } from '../byte-map'
-import { SoqlParserError } from '../errors'
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
-import { SoqlOrderByField } from './SoqlOrderByField'
+import { BYTE_MAP } from '../byte-map.js'
+import { SoqlParserError } from '../errors.js'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
+import { SoqlOrderByField } from './SoqlOrderByField.js'
 
 export class SoqlOrderByClause extends SoqlBase {
     fields: SoqlOrderByField[] // OrderByField[]

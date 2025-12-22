@@ -1,12 +1,12 @@
-import { SoqlParserError } from '../errors'
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
-import { SoqlSelectClause } from './SoqlSelectClause'
-import { SoqlFromClause } from './SoqlFromClause'
-import { SoqlWhereClause } from './SoqlWhereClause'
-import { SoqlGroupByClause } from './SoqlGroupByClause'
-import { SoqlHavingClause } from './SoqlHavingClause'
-import { SoqlOrderByClause } from './SoqlOrderByClause'
+import { SoqlParserError } from '../errors.js'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
+import { SoqlSelectClause } from './SoqlSelectClause.js'
+import { SoqlFromClause } from './SoqlFromClause.js'
+import { SoqlWhereClause } from './SoqlWhereClause.js'
+import { SoqlGroupByClause } from './SoqlGroupByClause.js'
+import { SoqlHavingClause } from './SoqlHavingClause.js'
+import { SoqlOrderByClause } from './SoqlOrderByClause.js'
 
 export class SoqlQuery extends SoqlBase {
     select: SoqlSelectClause

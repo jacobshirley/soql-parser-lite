@@ -1,7 +1,7 @@
-import { SoqlParserError } from '../errors'
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
-import { SoqlBooleanExpr } from './SoqlBooleanExpr'
+import { SoqlParserError } from '../errors.js'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
+import { SoqlBooleanExpr } from './SoqlBooleanExpr.js'
 
 export class SoqlWhereClause extends SoqlBase {
     expr: SoqlBooleanExpr // BooleanExpr type

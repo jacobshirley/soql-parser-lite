@@ -1,12 +1,12 @@
-import { BYTE_MAP } from '../byte-map'
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
-import { SoqlValueExpr } from './SoqlValueExpr'
-import { SoqlQuery } from './SoqlQuery'
-import { SoqlParserError } from '../errors'
-import { SoqlAggregateField } from './SoqlAggregateField'
-import { SoqlField } from './SoqlField'
-import { OPERATORS, SoqlOperator } from '../types'
+import { BYTE_MAP } from '../byte-map.js'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
+import { SoqlValueExpr } from './SoqlValueExpr.js'
+import { SoqlQuery } from './SoqlQuery.js'
+import { SoqlParserError } from '../errors.js'
+import { SoqlAggregateField } from './SoqlAggregateField.js'
+import { SoqlField } from './SoqlField.js'
+import { OPERATORS, SoqlOperator } from '../types.js'
 
 export abstract class SoqlBooleanExpr extends SoqlBase {
     static fromString(

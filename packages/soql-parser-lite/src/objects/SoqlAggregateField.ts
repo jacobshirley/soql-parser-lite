@@ -1,7 +1,7 @@
-import { BYTE_MAP } from '../byte-map'
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
-import { SoqlField } from './SoqlField'
+import { BYTE_MAP } from '../byte-map.js'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
+import { SoqlField } from './SoqlField.js'
 
 export class SoqlAggregateField extends SoqlBase {
     functionName: string

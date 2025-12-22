@@ -1,7 +1,7 @@
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
-import { SoqlField } from './SoqlField'
-import { SoqlAggregateField } from './SoqlAggregateField'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
+import { SoqlField } from './SoqlField.js'
+import { SoqlAggregateField } from './SoqlAggregateField.js'
 
 export class SoqlOrderByField extends SoqlBase {
     field: SoqlField | SoqlAggregateField

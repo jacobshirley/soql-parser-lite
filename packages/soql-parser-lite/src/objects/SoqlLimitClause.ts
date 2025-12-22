@@ -1,6 +1,6 @@
-import { SoqlParserError } from '../errors'
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
+import { SoqlParserError } from '../errors.js'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 
 export class SoqlLimitClause extends SoqlBase {
     value: number

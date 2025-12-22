@@ -1,8 +1,8 @@
-import { BYTE_MAP } from '../byte-map'
-import { SoqlParserError } from '../errors'
-import { DATE_LITERALS, DATE_LITERALS_DYNAMIC } from '../types'
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
+import { BYTE_MAP } from '../byte-map.js'
+import { SoqlParserError } from '../errors.js'
+import { DATE_LITERALS, DATE_LITERALS_DYNAMIC } from '../types.js'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 
 // Base class for all value expressions
 export abstract class SoqlValueExpr extends SoqlBase {

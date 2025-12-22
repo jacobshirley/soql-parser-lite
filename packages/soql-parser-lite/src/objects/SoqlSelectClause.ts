@@ -1,8 +1,8 @@
-import { BYTE_MAP } from '../byte-map'
-import { SoqlParserError } from '../errors'
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
-import { SoqlSelectItem } from './SoqlSelectItem'
+import { BYTE_MAP } from '../byte-map.js'
+import { SoqlParserError } from '../errors.js'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
+import { SoqlSelectItem } from './SoqlSelectItem.js'
 
 export class SoqlSelectClause extends SoqlBase {
     items: SoqlSelectItem[]

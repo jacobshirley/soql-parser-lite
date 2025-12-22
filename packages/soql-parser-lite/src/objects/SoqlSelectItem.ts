@@ -1,9 +1,9 @@
-import { BYTE_MAP } from '../byte-map'
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
-import { SoqlField } from './SoqlField'
-import { SoqlAggregateField } from './SoqlAggregateField'
-import { SoqlSubquery } from './SoqlSubquery'
+import { BYTE_MAP } from '../byte-map.js'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
+import { SoqlField } from './SoqlField.js'
+import { SoqlAggregateField } from './SoqlAggregateField.js'
+import { SoqlSubquery } from './SoqlSubquery.js'
 
 export class SoqlSelectItem extends SoqlBase {
     item: SoqlField | SoqlAggregateField | SoqlSubquery

@@ -1,6 +1,6 @@
-import { SoqlBase } from './core/SoqlBase'
-import { SoqlStringBuffer } from './core/SoqlStringBuffer'
-import { SoqlQuery } from './SoqlQuery'
+import { SoqlBase } from './core/SoqlBase.js'
+import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
+import { SoqlQuery } from './SoqlQuery.js'
 
 export class SoqlSubquery extends SoqlBase {
     subquery: SoqlQuery

@@ -1,7 +1,7 @@
-import { ByteBuffer } from '../../byte-buffer'
-import { BYTE_MAP, isWhitespace } from '../../byte-map'
-import { SoqlParserError } from '../../errors'
-import { SOQL_KEYWORDS, SoqlKeyword } from '../../types'
+import { ByteBuffer } from '../../byte-buffer.js'
+import { BYTE_MAP, isWhitespace } from '../../byte-map.js'
+import { SoqlParserError } from '../../errors.js'
+import { SOQL_KEYWORDS, SoqlKeyword } from '../../types.js'
 
 export class SoqlStringBuffer {
     buffer: ByteBuffer
