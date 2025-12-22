@@ -155,10 +155,6 @@ const query = parseSoqlQuery(
 - ✅ Aggregate functions (COUNT, MAX, MIN, SUM, AVG)
 - ✅ Field aliases
 
-## Type Definitions
-
-See the [full type definitions](./packages/soql-parser-lite/src/types.ts) for more details.
-
 ## Development
 
 ```bash
