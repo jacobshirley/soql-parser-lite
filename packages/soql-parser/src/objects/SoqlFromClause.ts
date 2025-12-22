@@ -18,6 +18,8 @@ export class SoqlFromClause extends SoqlBase {
     }
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlFromClause {
+        buffer.skipWhitespace()
+
         const keyword = buffer.readKeyword()
         if (keyword !== 'FROM') {
             throw new SoqlParserError(`Expected FROM keyword, got: ${keyword}`)

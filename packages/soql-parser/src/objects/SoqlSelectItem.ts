@@ -29,6 +29,9 @@ export class SoqlSelectItem extends SoqlBase {
         if (buffer.peek() === BYTE_MAP.openParen) {
             buffer.expect(BYTE_MAP.openParen) // consume '('
             const subquery = SoqlSubquery.fromBuffer(buffer)
+            buffer.expect(BYTE_MAP.closeParen) // consume ')'
+
+            buffer.skipWhitespace()
             return new SoqlSelectItem({ item: subquery })
         }
 
