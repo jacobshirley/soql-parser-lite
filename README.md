@@ -4,6 +4,9 @@
 
 A zero-dependency, TypeScript/JavaScript parser for SOQL (Salesforce Object Query Language) that converts query strings into structured objects.
 
+[![npm version](https://img.shields.io/npm/v/soql-parser-lite.svg)](https://www.npmjs.com/package/soql-parser-lite)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Features
 
 - 🔍 **Complete SOQL Support**: Parses all major SOQL clauses (SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET)
