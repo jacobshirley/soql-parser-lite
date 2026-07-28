@@ -40,14 +40,5 @@
     },
     "dependencies": {
         "soql-parser-lite": "1.0.1"
-    },
-    "pnpm": {
-        "packageExtensions": {
-            "@vitest/browser": {
-                "peerDependencies": {
-                    "@vitest/runner": "*"
-                }
-            }
-        }
     }
 }
