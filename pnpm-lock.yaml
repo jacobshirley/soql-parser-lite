@@ -12,7 +12,7 @@ importers:
     dependencies:
       soql-parser-lite:
         specifier: 1.0.1
-        version: 1.0.1
+        version: link:packages/soql-parser-lite
     devDependencies:
       '@commitlint/cli':
         specifier: ^21.0.0
@@ -928,9 +928,6 @@ packages:
     resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
     engines: {node: '>=18'}
 
-  soql-parser-lite@1.0.1:
-    resolution: {integrity: sha512-AdzR7iOuEr/N6+fzwHfcyEfheyWGkYkkHpYeZgBpoSRwTWyLXcFi4ov0kRA/1mZ6LsrK3dv0Gq5PXBeONzEKCQ==}
-
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -1704,9 +1701,9 @@ snapshots:
 
   fast-uri@3.1.0: {}
 
-  fdir@6.5.0(picomatch@4.0.3):
+  fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
-      picomatch: 4.0.3
+      picomatch: 4.0.5
 
   fsevents@2.3.2:
     optional: true
@@ -1922,8 +1919,6 @@ snapshots:
       mrmime: 2.0.1
       totalist: 3.0.1
 
-  soql-parser-lite@1.0.1: {}
-
   source-map-js@1.2.1: {}
 
   stackback@0.0.2: {}
@@ -1961,8 +1956,8 @@ snapshots:
 
   tinyglobby@0.2.15:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
 
   tinyrainbow@3.0.3: {}
 
@@ -1997,8 +1992,8 @@ snapshots:
   vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       esbuild: 0.25.12
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
       postcss: 8.5.6
       rollup: 4.53.3
       tinyglobby: 0.2.15
