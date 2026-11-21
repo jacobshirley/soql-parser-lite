@@ -17,9 +17,8 @@ export const OPERATORS = [
     '>',
     '>=',
     'LIKE',
-    'NLIKE',
     'IN',
-    'NIN',
+    'NOT IN',
     'INCLUDES',
     'EXCLUDES',
 ] as const
