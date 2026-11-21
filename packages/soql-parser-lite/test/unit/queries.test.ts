@@ -35,39 +35,50 @@ describe('SOQL Parsing', () => {
                 '  SELECT Name, Age, IsActive, Sub.Field, Sub.Field2  FROM User'
             const select = SoqlSelectClause.fromString(soql)
             expect(select).toMatchInlineSnapshot(`
-              SoqlSelectClause {
+              {
                 "items": [
-                  SoqlSelectItem {
+                  {
                     "alias": undefined,
-                    "item": SoqlField {
+                    "item": {
                       "name": "Name",
+                      "type": "SoqlField",
                     },
+                    "type": "SoqlSelectItem",
                   },
-                  SoqlSelectItem {
+                  {
                     "alias": undefined,
-                    "item": SoqlField {
+                    "item": {
                       "name": "Age",
+                      "type": "SoqlField",
                     },
+                    "type": "SoqlSelectItem",
                   },
-                  SoqlSelectItem {
+                  {
                     "alias": undefined,
-                    "item": SoqlField {
+                    "item": {
                       "name": "IsActive",
+                      "type": "SoqlField",
                     },
+                    "type": "SoqlSelectItem",
                   },
-                  SoqlSelectItem {
+                  {
                     "alias": undefined,
-                    "item": SoqlField {
+                    "item": {
                       "name": "Sub.Field",
+                      "type": "SoqlField",
                     },
+                    "type": "SoqlSelectItem",
                   },
-                  SoqlSelectItem {
+                  {
                     "alias": undefined,
-                    "item": SoqlField {
+                    "item": {
                       "name": "Sub.Field2",
+                      "type": "SoqlField",
                     },
+                    "type": "SoqlSelectItem",
                   },
                 ],
+                "type": "SoqlSelectClause",
               }
             `)
         })
