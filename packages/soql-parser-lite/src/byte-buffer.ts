@@ -54,6 +54,8 @@ export class ByteBuffer {
     protected buffer: number[] = []
     /** Optional async iterable input source */
     protected asyncIterable?: ByteStream
+    /** Cached sync iterator so repeated reads continue rather than restart */
+    private syncIterator?: Iterator<StreamInput>
 
     /**
      * Creates a new ByteBuffer instance.
@@ -80,7 +82,10 @@ export class ByteBuffer {
             return false
         }
 
-        const iterator = this.asyncIterable[Symbol.iterator]()
+        // Reuse one iterator: re-creating it for an array source would re-read
+        // the whole input every time the buffer is refilled.
+        const iterator = (this.syncIterator ??=
+            this.asyncIterable[Symbol.iterator]())
 
         let processed = false
         while (this.length < this.maxBufferSize || !processed) {
@@ -229,7 +234,9 @@ export class ByteBuffer {
      */
     next(): number {
         if (this.position >= this.buffer.length) {
-            if (this.readStream()) {
+            // Once EOF has been signalled the source is exhausted; reading again
+            // would report "processed" forever and recurse without end.
+            if (!this.eof && this.readStream()) {
                 return this.next()
             }
 
