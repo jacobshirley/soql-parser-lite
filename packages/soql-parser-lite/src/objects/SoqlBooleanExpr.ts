@@ -1,7 +1,7 @@
 import { BYTE_MAP } from '../byte-map.js'
 import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
-import { SoqlValueExpr } from './SoqlValueExpr.js'
+import { SoqlBindVariable, SoqlValueExpr } from './SoqlValueExpr.js'
 import { SoqlQuery } from './SoqlQuery.js'
 import { SoqlParserError } from '../errors.js'
 import { SoqlAggregateField } from './SoqlAggregateField.js'
@@ -128,38 +128,41 @@ export class SoqlComparisonExpr<T = SoqlValueExpr> extends SoqlBooleanExpr {
         buffer.skipWhitespace()
 
         if (operator === 'IN' || operator === 'NIN') {
-            let right: SoqlQuery | SoqlValueExpr[]
+            let right: SoqlQuery | SoqlValueExpr[] | SoqlBindVariable
 
-            // Check if this is a subquery (SELECT) or a list of values
-            buffer.expect(BYTE_MAP.openParen)
-            buffer.skipWhitespace()
-
-            const nextStr = buffer.peekString()
-            if (nextStr.toUpperCase() === 'SELECT') {
-                // Parse as subquery
-                const query = SoqlQuery.fromBuffer(buffer)
-                buffer.skipWhitespace()
-                buffer.expect(BYTE_MAP.closeParen)
-                right = query
+            if (buffer.peek() === BYTE_MAP.colon) {
+                // A bind variable stands for the whole list: `IN :ids`
+                right = SoqlBindVariable.fromBuffer(buffer)
             } else {
-                // Parse as list of values
-                const values: SoqlValueExpr[] = []
-                while (true) {
-                    const value = SoqlValueExpr.fromBuffer(buffer)
-                    values.push(value)
+                // A subquery (SELECT) or a parenthesised list of values
+                buffer.expect(BYTE_MAP.openParen)
+                buffer.skipWhitespace()
 
+                const nextStr = buffer.peekString()
+                if (nextStr.toUpperCase() === 'SELECT') {
+                    const query = SoqlQuery.fromBuffer(buffer)
                     buffer.skipWhitespace()
-                    const nextByte = buffer.peek()
-                    if (nextByte === BYTE_MAP.comma) {
-                        buffer.expect(BYTE_MAP.comma)
-                        buffer.skipWhitespace()
-                    } else {
-                        break
-                    }
-                }
+                    buffer.expect(BYTE_MAP.closeParen)
+                    right = query
+                } else {
+                    const values: SoqlValueExpr[] = []
+                    while (true) {
+                        const value = SoqlValueExpr.fromBuffer(buffer)
+                        values.push(value)
 
-                buffer.expect(BYTE_MAP.closeParen)
-                right = values
+                        buffer.skipWhitespace()
+                        const nextByte = buffer.peek()
+                        if (nextByte === BYTE_MAP.comma) {
+                            buffer.expect(BYTE_MAP.comma)
+                            buffer.skipWhitespace()
+                        } else {
+                            break
+                        }
+                    }
+
+                    buffer.expect(BYTE_MAP.closeParen)
+                    right = values
+                }
             }
 
             if (operator === 'IN') {
@@ -231,10 +234,10 @@ export class SoqlComparisonExpr<T = SoqlValueExpr> extends SoqlBooleanExpr {
 
 // All comparison operator subclasses
 export class SoqlInExpr extends SoqlComparisonExpr<
-    SoqlValueExpr[] | SoqlQuery
+    SoqlValueExpr[] | SoqlQuery | SoqlBindVariable
 > {}
 export class SoqlNinExpr extends SoqlComparisonExpr<
-    SoqlValueExpr[] | SoqlQuery
+    SoqlValueExpr[] | SoqlQuery | SoqlBindVariable
 > {}
 export class SoqlEqlExpr extends SoqlComparisonExpr<SoqlValueExpr> {}
 export class SoqlNeExpr extends SoqlComparisonExpr<SoqlValueExpr> {}
