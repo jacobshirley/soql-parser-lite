@@ -41,7 +41,16 @@ export class SoqlQuery extends SoqlBase {
 
     static fromString(string: string): SoqlQuery {
         const stringBuffer = new SoqlStringBuffer(string)
-        return SoqlQuery.fromBuffer(stringBuffer)
+        try {
+            return SoqlQuery.fromBuffer(stringBuffer)
+        } catch (e) {
+            if (e instanceof SoqlParserError && e.offset === undefined) {
+                // Report where parsing stopped
+                e.offset = stringBuffer.offset
+                e.message += ` (at offset ${e.offset})`
+            }
+            throw e
+        }
     }
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlQuery {

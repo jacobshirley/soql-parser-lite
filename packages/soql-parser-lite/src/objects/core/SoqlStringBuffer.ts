@@ -98,9 +98,29 @@ export class SoqlStringBuffer {
     readKeyword(): SoqlKeyword {
         const word = this.readString().toUpperCase()
         if (!SOQL_KEYWORDS.includes(word as any)) {
-            throw new SoqlParserError(`Expected SOQL keyword, got: ${word}`)
+            throw new SoqlParserError(
+                `Expected SOQL keyword, got: ${word || this.describeNext()}`,
+            )
         }
         return word as SoqlKeyword
+    }
+
+    /**
+     * Zero-based offset of the next unread byte from the start of the input.
+     */
+    get offset(): number {
+        return this.buffer.offset
+    }
+
+    /**
+     * Describes the next unread input for error messages: the next word, the
+     * next punctuation character, or `end of input`.
+     */
+    describeNext(): string {
+        this.skipWhitespace()
+        const next = this.buffer.peek()
+        if (next === null) return 'end of input'
+        return `'${this.peekString() || String.fromCharCode(next)}'`
     }
 
     expect(...expectedByte: number[]): void {

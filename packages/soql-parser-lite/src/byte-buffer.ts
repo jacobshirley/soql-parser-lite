@@ -3,9 +3,17 @@ import {
     BufferSizeExceededError,
     EofReachedError,
     NoMoreTokensError,
+    SoqlParserError,
 } from './errors.js'
 import type { ByteStream, StreamInput } from './types.js'
 import { bytesToString, stringToBytes } from './utils.js'
+
+/** Human-readable description of a byte, e.g. `'('` or `whitespace`. */
+function describeByte(byte: number): string {
+    if (byte === 0x20) return 'whitespace'
+    if (byte === 0x09 || byte === 0x0a || byte === 0x0d) return 'whitespace'
+    return `'${String.fromCharCode(byte)}'`
+}
 
 /**
  * Converts a ReadableStream into an AsyncIterable.
@@ -46,6 +54,8 @@ export class ByteBuffer {
     locked: boolean = false
     /** Whether to allow exceeding the buffer size temporarily */
     allowBufferToBeExceeded: boolean = true
+    /** Number of consumed bytes already dropped from the buffer by compact() */
+    private compactedBytes: number = 0
     /** Current position in the input stream */
     protected inputOffset: number = 0
     /** Number of outputs generated */
@@ -128,6 +138,14 @@ export class ByteBuffer {
             const value = next.value
             this.feed(value)
         }
+    }
+
+    /**
+     * Zero-based offset of the next unread byte from the start of the input
+     * (unaffected by buffer compaction).
+     */
+    get offset(): number {
+        return this.compactedBytes + this.position
     }
 
     /**
@@ -249,14 +267,16 @@ export class ByteBuffer {
      * @typeParam T - The expected item type
      * @param itemType - Constructor or value to match against
      * @returns The consumed item cast to the expected type
-     * @throws Error if the item doesn't match the expected type/value
+     * @throws SoqlParserError if the item doesn't match the expected type/value
      */
     expect<T extends number>(...itemType: T[]): T {
+        const offset = this.offset
         const item = this.next()
 
         if (!itemType.includes(item as T)) {
-            throw new Error(
-                `Expected ${itemType} but got ${item} (char: '${String.fromCharCode(item)}')`,
+            throw new SoqlParserError(
+                `Expected ${itemType.map(describeByte).join(' or ')} but got ${describeByte(item)}`,
+                { offset },
             )
         }
 
@@ -268,6 +288,7 @@ export class ByteBuffer {
      */
     compact(): void {
         if (!this.locked && this.position > 0) {
+            this.compactedBytes += this.position
             this.buffer = this.buffer.slice(this.position)
             this.position = 0
         }

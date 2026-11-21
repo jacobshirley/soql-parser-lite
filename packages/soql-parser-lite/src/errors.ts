@@ -2,9 +2,21 @@
  * Base error class for all SOQL parser errors.
  */
 export class SoqlParserError extends Error {
-    constructor(message: string) {
-        super(`SOQL Parser Error: ${message}`)
+    /**
+     * Zero-based character offset (in UTF-8 bytes) in the input at which
+     * parsing failed, when known.
+     */
+    offset?: number
+
+    constructor(message: string, options?: { offset?: number }) {
+        super(
+            `SOQL Parser Error: ${message}` +
+                (options?.offset !== undefined
+                    ? ` (at offset ${options.offset})`
+                    : ''),
+        )
         this.name = 'SoqlParserError'
+        if (options?.offset !== undefined) this.offset = options.offset
     }
 }
 
