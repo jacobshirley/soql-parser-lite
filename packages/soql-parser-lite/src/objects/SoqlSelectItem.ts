@@ -3,14 +3,15 @@ import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 import { SoqlField } from './SoqlField.js'
 import { SoqlAggregateField } from './SoqlAggregateField.js'
+import { SoqlFunctionCall } from './SoqlFunctionCall.js'
 import { SoqlSubquery } from './SoqlSubquery.js'
 
 export class SoqlSelectItem extends SoqlBase {
-    item: SoqlField | SoqlAggregateField | SoqlSubquery
+    item: SoqlField | SoqlAggregateField | SoqlFunctionCall | SoqlSubquery
     alias?: string
 
     constructor(options: {
-        item: SoqlField | SoqlAggregateField | SoqlSubquery
+        item: SoqlField | SoqlAggregateField | SoqlFunctionCall | SoqlSubquery
         alias?: string
     }) {
         super()
@@ -35,14 +36,10 @@ export class SoqlSelectItem extends SoqlBase {
             return new SoqlSelectItem({ item: subquery })
         }
 
-        let item: SoqlField | SoqlAggregateField
+        let item: SoqlField | SoqlAggregateField | SoqlFunctionCall
 
-        const possibleFunction = buffer.tryParse(() =>
-            SoqlAggregateField.fromBuffer(buffer),
-        )
-
-        if (possibleFunction) {
-            item = possibleFunction
+        if (buffer.peekIsFunctionCall()) {
+            item = SoqlFunctionCall.fromBuffer(buffer)
         } else {
             item = SoqlField.fromBuffer(buffer)
         }

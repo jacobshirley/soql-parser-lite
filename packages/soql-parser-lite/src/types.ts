@@ -125,3 +125,48 @@ export const SOQL_KEYWORDS = [
  * Valid SOQL keywords that can be used in queries.
  */
 export type SoqlKeyword = (typeof SOQL_KEYWORDS)[number]
+
+/**
+ * Aggregate functions. These are not allowed in a WHERE clause.
+ * @internal
+ */
+export const AGGREGATE_FUNCTIONS: string[] = [
+    'COUNT',
+    'COUNT_DISTINCT',
+    'MIN',
+    'MAX',
+    'SUM',
+    'AVG',
+]
+
+/**
+ * Functions documented in the SOQL reference (upper-case; matching is
+ * case-insensitive). Calls to any other name are rejected.
+ * @internal
+ */
+export const KNOWN_FUNCTIONS: string[] = [
+    ...AGGREGATE_FUNCTIONS,
+    // Date functions
+    'CALENDAR_MONTH',
+    'CALENDAR_QUARTER',
+    'CALENDAR_YEAR',
+    'DAY_IN_MONTH',
+    'DAY_IN_WEEK',
+    'DAY_IN_YEAR',
+    'DAY_ONLY',
+    'FISCAL_MONTH',
+    'FISCAL_QUARTER',
+    'FISCAL_YEAR',
+    'HOUR_IN_DAY',
+    'WEEK_IN_MONTH',
+    'WEEK_IN_YEAR',
+    // Other
+    'CONVERTCURRENCY',
+    'CONVERTTIMEZONE',
+    'DISTANCE',
+    'FIELDS',
+    'FORMAT',
+    'GEOLOCATION',
+    'GROUPING',
+    'TOLABEL',
+]
