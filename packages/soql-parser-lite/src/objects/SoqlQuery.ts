@@ -1,4 +1,5 @@
 import { SoqlParserError } from '../errors.js'
+import { parseNonNegativeInteger } from '../utils.js'
 import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 import { SoqlSelectClause } from './SoqlSelectClause.js'
@@ -87,10 +88,13 @@ export class SoqlQuery extends SoqlBase {
             buffer.readKeyword() // consume LIMIT
             buffer.skipWhitespace()
             const limitString = buffer.readString()
-            limit = Number(limitString)
-            if (isNaN(limit)) {
-                throw new SoqlParserError(`Invalid LIMIT value: ${limitString}`)
+            const parsedLimit = parseNonNegativeInteger(limitString)
+            if (parsedLimit === undefined) {
+                throw new SoqlParserError(
+                    `Invalid LIMIT value (expected a non-negative integer): ${limitString}`,
+                )
             }
+            limit = parsedLimit
             buffer.skipWhitespace()
             keyword = buffer.peekKeyword()
         }
@@ -99,12 +103,13 @@ export class SoqlQuery extends SoqlBase {
             buffer.readKeyword() // consume OFFSET
             buffer.skipWhitespace()
             const offsetString = buffer.readString()
-            offset = Number(offsetString)
-            if (isNaN(offset)) {
+            const parsedOffset = parseNonNegativeInteger(offsetString)
+            if (parsedOffset === undefined) {
                 throw new SoqlParserError(
-                    `Invalid OFFSET value: ${offsetString}`,
+                    `Invalid OFFSET value (expected a non-negative integer): ${offsetString}`,
                 )
             }
+            offset = parsedOffset
         }
 
         return new SoqlQuery({

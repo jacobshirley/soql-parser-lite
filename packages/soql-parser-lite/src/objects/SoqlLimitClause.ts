@@ -1,3 +1,4 @@
+import { parseNonNegativeInteger } from '../utils.js'
 import { SoqlParserError } from '../errors.js'
 import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
@@ -23,9 +24,11 @@ export class SoqlLimitClause extends SoqlBase {
 
         buffer.skipWhitespace()
         const limitString = buffer.readString()
-        const limit = Number(limitString)
-        if (isNaN(limit)) {
-            throw new SoqlParserError(`Invalid LIMIT value: ${limitString}`)
+        const limit = parseNonNegativeInteger(limitString)
+        if (limit === undefined) {
+            throw new SoqlParserError(
+                `Invalid LIMIT value (expected a non-negative integer): ${limitString}`,
+            )
         }
 
         return limit

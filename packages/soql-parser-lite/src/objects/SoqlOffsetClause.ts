@@ -1,3 +1,4 @@
+import { parseNonNegativeInteger } from '../utils.js'
 import { SoqlParserError } from '../errors.js'
 import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
@@ -25,9 +26,11 @@ export class SoqlOffsetClause extends SoqlBase {
 
         buffer.skipWhitespace()
         const offsetString = buffer.readString()
-        const offset = Number(offsetString)
-        if (isNaN(offset)) {
-            throw new SoqlParserError(`Invalid OFFSET value: ${offsetString}`)
+        const offset = parseNonNegativeInteger(offsetString)
+        if (offset === undefined) {
+            throw new SoqlParserError(
+                `Invalid OFFSET value (expected a non-negative integer): ${offsetString}`,
+            )
         }
 
         return offset

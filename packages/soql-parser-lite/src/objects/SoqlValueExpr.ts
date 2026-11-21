@@ -1,6 +1,7 @@
 import { BYTE_MAP } from '../byte-map.js'
 import { SoqlParserError } from '../errors.js'
 import { DATE_LITERALS, DATE_LITERALS_DYNAMIC } from '../types.js'
+import { parseSoqlNumber } from '../utils.js'
 import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 
@@ -90,8 +91,8 @@ export class SoqlNumberLiteral extends SoqlValueExpr {
     }
 
     static fromString(value: string): SoqlNumberLiteral {
-        const numValue = Number(value)
-        if (isNaN(numValue)) {
+        const numValue = parseSoqlNumber(value)
+        if (numValue === undefined) {
             throw new SoqlParserError(`Invalid number literal: ${value}`)
         }
         return new SoqlNumberLiteral(numValue)
@@ -99,8 +100,8 @@ export class SoqlNumberLiteral extends SoqlValueExpr {
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlNumberLiteral {
         const valueString = buffer.readString()
-        const numValue = Number(valueString)
-        if (!isNaN(numValue)) {
+        const numValue = parseSoqlNumber(valueString)
+        if (numValue !== undefined) {
             return new SoqlNumberLiteral(numValue)
         }
         throw new SoqlParserError(`Invalid number literal: ${valueString}`)
