@@ -2,13 +2,14 @@ import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 import { SoqlField } from './SoqlField.js'
 import { SoqlAggregateField } from './SoqlAggregateField.js'
+import { SoqlFunctionCall } from './SoqlFunctionCall.js'
 
 export class SoqlOrderByField extends SoqlBase {
-    field: SoqlField | SoqlAggregateField
+    field: SoqlField | SoqlAggregateField | SoqlFunctionCall
     direction: 'ASC' | 'DESC' | null
 
     constructor(options: {
-        field: SoqlField | SoqlAggregateField
+        field: SoqlField | SoqlAggregateField | SoqlFunctionCall
         direction: 'ASC' | 'DESC' | null
     }) {
         super()
@@ -22,14 +23,10 @@ export class SoqlOrderByField extends SoqlBase {
     }
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlOrderByField {
-        let field: SoqlField | SoqlAggregateField
+        let field: SoqlField | SoqlAggregateField | SoqlFunctionCall
 
-        const possibleFunction = buffer.tryParse(() =>
-            SoqlAggregateField.fromBuffer(buffer),
-        )
-
-        if (possibleFunction) {
-            field = possibleFunction
+        if (buffer.peekIsFunctionCall()) {
+            field = SoqlFunctionCall.fromBuffer(buffer)
         } else {
             field = SoqlField.fromBuffer(buffer)
         }

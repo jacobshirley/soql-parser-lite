@@ -90,6 +90,33 @@ export class SoqlStringBuffer {
     }
 
     /**
+     * Checks, without consuming anything, whether the next token is a word
+     * immediately followed (ignoring whitespace) by an opening parenthesis,
+     * i.e. the start of a function call such as `COUNT(Id)`.
+     */
+    peekIsFunctionCall(): boolean {
+        let offset = 0
+        while (isWhitespace(this.buffer.peek(offset))) offset++
+
+        const nameStart = offset
+        let currByte = this.buffer.peek(offset)
+        while (
+            currByte !== null &&
+            !isWhitespace(currByte) &&
+            currByte !== BYTE_MAP.comma &&
+            currByte !== BYTE_MAP.openParen &&
+            currByte !== BYTE_MAP.closeParen
+        ) {
+            offset++
+            currByte = this.buffer.peek(offset)
+        }
+        if (offset === nameStart) return false
+
+        while (isWhitespace(this.buffer.peek(offset))) offset++
+        return this.buffer.peek(offset) === BYTE_MAP.openParen
+    }
+
+    /**
      * Reads and consumes the next SOQL keyword from the buffer.
      *
      * @returns The consumed keyword

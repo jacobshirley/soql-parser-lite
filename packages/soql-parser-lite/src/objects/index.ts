@@ -18,6 +18,8 @@ export {
 // Fields
 export { SoqlField } from './SoqlField'
 export { SoqlAggregateField } from './SoqlAggregateField'
+export { SoqlFunctionCall } from './SoqlFunctionCall'
+export type { SoqlFunctionArg } from './SoqlFunctionCall'
 
 // Select
 export { SoqlSubquery } from './SoqlSubquery'

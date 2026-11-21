@@ -6,6 +6,7 @@ import { SoqlQuery } from './SoqlQuery.js'
 import { SoqlParserError } from '../errors.js'
 import { SoqlAggregateField } from './SoqlAggregateField.js'
 import { SoqlField } from './SoqlField.js'
+import { SoqlFunctionCall } from './SoqlFunctionCall.js'
 import { OPERATORS, SoqlOperator } from '../types.js'
 
 export abstract class SoqlBooleanExpr extends SoqlBase {
@@ -99,18 +100,16 @@ export class SoqlComparisonExpr<T = SoqlValueExpr> extends SoqlBooleanExpr {
     ): SoqlComparisonExpr {
         let expr: SoqlComparisonExpr<any>
 
-        // Try to parse as aggregate function first (for HAVING clauses), then as field
+        // A function call (aggregate, date function, toLabel, ...) or a field
         let left: SoqlValueExpr
-        const possibleAggregate = buffer.tryParse(() =>
-            SoqlAggregateField.fromBuffer(buffer),
-        )
-        if (possibleAggregate) {
-            if (!allowAggregates) {
+        if (buffer.peekIsFunctionCall()) {
+            const call = SoqlFunctionCall.fromBuffer(buffer)
+            if (call instanceof SoqlAggregateField && !allowAggregates) {
                 throw new SoqlParserError(
                     'Aggregate functions are not allowed in WHERE clause',
                 )
             }
-            left = possibleAggregate
+            left = call
         } else {
             left = SoqlField.fromBuffer(buffer)
         }
