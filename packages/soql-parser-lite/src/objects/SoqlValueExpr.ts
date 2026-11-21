@@ -59,6 +59,11 @@ export class SoqlStringLiteral extends SoqlValueExpr {
         this.value = value
     }
 
+    /**
+     * Lenient helper: strips one pair of surrounding quotes (if any) without
+     * decoding escapes. Use {@link SoqlStringLiteral.fromBuffer} (what the
+     * query parser uses) for strict SOQL string parsing.
+     */
     static fromString(value: string): SoqlStringLiteral {
         const cleanValue =
             (value.startsWith("'") && value.endsWith("'")) ||
@@ -69,15 +74,69 @@ export class SoqlStringLiteral extends SoqlValueExpr {
     }
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlStringLiteral {
-        const valueString = buffer.readString()
-        if (
-            (valueString.startsWith("'") && valueString.endsWith("'")) ||
-            (valueString.startsWith('"') && valueString.endsWith('"'))
-        ) {
-            return new SoqlStringLiteral(valueString.slice(1, -1))
-        }
-        throw new SoqlParserError(`Invalid string literal: ${valueString}`)
+        return new SoqlStringLiteral(decodeSoqlString(buffer.readString()))
     }
+}
+
+const SIMPLE_ESCAPES: Record<string, string> = {
+    n: '\n',
+    r: '\r',
+    t: '\t',
+    b: '\b',
+    f: '\f',
+    '"': '"',
+    "'": "'",
+    '\\': '\\',
+}
+
+/**
+ * Decodes a single-quoted SOQL string literal (including its quotes).
+ *
+ * Supported escapes are `\n \r \t \b \f \" \' \\`. `\_` and `\%` (used to
+ * escape LIKE wildcards) are kept verbatim, backslash included, because the
+ * backslash is what makes them literal in a LIKE pattern. Any other backslash
+ * use, an unescaped inner quote, a missing closing quote or double quotes
+ * raise a SoqlParserError.
+ */
+function decodeSoqlString(raw: string): string {
+    if (raw.startsWith('"')) {
+        throw new SoqlParserError(
+            `Double-quoted strings are not valid SOQL, use single quotes: ${raw}`,
+        )
+    }
+    if (!raw.startsWith("'") || raw.length < 2 || !raw.endsWith("'")) {
+        throw new SoqlParserError(`Unterminated string literal: ${raw}`)
+    }
+
+    const inner = raw.slice(1, -1)
+    let result = ''
+    for (let i = 0; i < inner.length; i++) {
+        const ch = inner[i]
+        if (ch === "'") {
+            throw new SoqlParserError(
+                `Unescaped quote in string literal: ${raw}`,
+            )
+        }
+        if (ch !== '\\') {
+            result += ch
+            continue
+        }
+        const next = inner[++i]
+        if (next === undefined) {
+            // Backslash escaped the closing quote
+            throw new SoqlParserError(`Unterminated string literal: ${raw}`)
+        }
+        if (next === '_' || next === '%') {
+            result += '\\' + next
+        } else if (next in SIMPLE_ESCAPES) {
+            result += SIMPLE_ESCAPES[next]
+        } else {
+            throw new SoqlParserError(
+                `Invalid escape sequence '\\${next}' in string literal: ${raw}`,
+            )
+        }
+    }
+    return result
 }
 
 // Number literal

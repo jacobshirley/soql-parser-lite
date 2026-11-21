@@ -39,7 +39,7 @@ describe('SoqlBooleanExpr', () => {
 
         it('should parse not equal operator (!=)', () => {
             const expr = SoqlBooleanExpr.fromString(
-                'Status != "Active"',
+                "Status != 'Active'",
             ) as SoqlNeExpr
             expect(expr).toBeInstanceOf(SoqlNeExpr)
             expect((expr.left as SoqlField).name).toBe('Status')
