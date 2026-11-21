@@ -9,7 +9,7 @@ import { SoqlQuery } from './objects'
  *
  * @example
  * ```typescript
- * const query = parseSoqlQuery('SELECT Id, Name FROM Account WHERE Status = "Active" LIMIT 10');
+ * const query = parseSoqlQuery("SELECT Id, Name FROM Account WHERE Status = 'Active' LIMIT 10");
  * console.log(query.select.items); // Access the selected fields
  * console.log(query.where?.expr); // Access the WHERE condition
  * ```

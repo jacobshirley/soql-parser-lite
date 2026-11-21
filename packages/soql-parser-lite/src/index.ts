@@ -10,7 +10,7 @@
  * ```typescript
  * import { parseSoqlQuery } from 'soql-parser-lite';
  *
- * const query = parseSoqlQuery('SELECT Id, Name FROM Account WHERE Status = "Active" LIMIT 10');
+ * const query = parseSoqlQuery("SELECT Id, Name FROM Account WHERE Status = 'Active' LIMIT 10");
  * console.log(query);
  * ```
  */

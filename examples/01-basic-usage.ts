@@ -23,11 +23,11 @@ console.log()
 console.log('Example 2: Query with WHERE clause')
 console.log('='.repeat(50))
 const whereQuery = parseSoqlQuery(
-    'SELECT Id, Name FROM Account WHERE Status = "Active" AND AnnualRevenue > 1000000',
+    "SELECT Id, Name FROM Account WHERE Status = 'Active' AND AnnualRevenue > 1000000",
 )
 console.log(
     'Query:',
-    'SELECT Id, Name FROM Account WHERE Status = "Active" AND AnnualRevenue > 1000000',
+    "SELECT Id, Name FROM Account WHERE Status = 'Active' AND AnnualRevenue > 1000000",
 )
 console.log('WHERE clause type:', JSON.stringify(whereQuery.where, null, 2))
 console.log()
@@ -69,11 +69,11 @@ console.log()
 console.log('Example 5: Date literals')
 console.log('='.repeat(50))
 const dateQuery = parseSoqlQuery(
-    'SELECT Id, Subject FROM Case WHERE CreatedDate = TODAY AND Status != "Closed"',
+    "SELECT Id, Subject FROM Case WHERE CreatedDate = TODAY AND Status != 'Closed'",
 )
 console.log(
     'Query:',
-    'SELECT Id, Subject FROM Case WHERE CreatedDate = TODAY AND Status != "Closed"',
+    "SELECT Id, Subject FROM Case WHERE CreatedDate = TODAY AND Status != 'Closed'",
 )
 console.log('Has WHERE clause:', !!dateQuery.where)
 console.log()

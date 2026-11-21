@@ -41,7 +41,7 @@ import { parseSoqlQuery } from 'soql-parser-lite'
 
 // Parse a simple query
 const query = parseSoqlQuery(
-    'SELECT Id, Name FROM Account WHERE Status = "Active" LIMIT 10',
+    "SELECT Id, Name FROM Account WHERE Status = 'Active' LIMIT 10",
 )
 
 console.log(JSON.stringify(query, null, 2))
@@ -99,7 +99,7 @@ const query = parseSoqlQuery('SELECT Id, Name, Email FROM Contact')
 
 ```typescript
 const query = parseSoqlQuery(
-    'SELECT Id, Name FROM Account WHERE Status = "Active" AND Revenue > 1000000',
+    "SELECT Id, Name FROM Account WHERE Status = 'Active' AND Revenue > 1000000",
 )
 ```
 
