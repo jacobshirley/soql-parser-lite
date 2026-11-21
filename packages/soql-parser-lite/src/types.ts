@@ -125,3 +125,33 @@ export const SOQL_KEYWORDS = [
  * Valid SOQL keywords that can be used in queries.
  */
 export type SoqlKeyword = (typeof SOQL_KEYWORDS)[number]
+
+/**
+ * Words that cannot be used as a select-item alias (the reserved keywords from
+ * the SOQL reference). Aggregate names such as `MAX`/`COUNT`, `OFFSET`,
+ * `ROLLUP`, `CUBE` and `DISTINCT` are not reserved and are valid aliases.
+ * @internal
+ */
+export const RESERVED_ALIAS_KEYWORDS = [
+    'AND',
+    'ASC',
+    'DESC',
+    'EXCLUDES',
+    'FIRST',
+    'FROM',
+    'GROUP',
+    'HAVING',
+    'IN',
+    'INCLUDES',
+    'LAST',
+    'LIKE',
+    'LIMIT',
+    'NOT',
+    'NULL',
+    'NULLS',
+    'OR',
+    'SELECT',
+    'USING',
+    'WHERE',
+    'WITH',
+] as const
