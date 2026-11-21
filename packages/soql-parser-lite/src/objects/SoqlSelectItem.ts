@@ -3,14 +3,15 @@ import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 import { SoqlField } from './SoqlField.js'
 import { SoqlAggregateField } from './SoqlAggregateField.js'
+import { SoqlTypeofItem } from './SoqlTypeofItem.js'
 import { SoqlSubquery } from './SoqlSubquery.js'
 
 export class SoqlSelectItem extends SoqlBase {
-    item: SoqlField | SoqlAggregateField | SoqlSubquery
+    item: SoqlField | SoqlAggregateField | SoqlSubquery | SoqlTypeofItem
     alias?: string
 
     constructor(options: {
-        item: SoqlField | SoqlAggregateField | SoqlSubquery
+        item: SoqlField | SoqlAggregateField | SoqlSubquery | SoqlTypeofItem
         alias?: string
     }) {
         super()
@@ -33,6 +34,12 @@ export class SoqlSelectItem extends SoqlBase {
 
             buffer.skipWhitespace()
             return new SoqlSelectItem({ item: subquery })
+        }
+
+        if (buffer.peekString().toUpperCase() === 'TYPEOF') {
+            const typeofItem = SoqlTypeofItem.fromBuffer(buffer)
+            buffer.skipWhitespace()
+            return new SoqlSelectItem({ item: typeofItem })
         }
 
         let item: SoqlField | SoqlAggregateField
