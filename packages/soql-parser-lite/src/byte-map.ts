@@ -53,6 +53,7 @@ export const BYTE_MAP = {
     y: 0x79,
     Y: 0x59,
     singleQuote: 0x27,
+    backslash: 0x5c,
     doubleQuote: 0x22,
     colon: 0x3a,
 }

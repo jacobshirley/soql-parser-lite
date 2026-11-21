@@ -90,6 +90,46 @@ export class SoqlStringBuffer {
     }
 
     /**
+     * Reads a quoted string token, including both quote characters, up to the
+     * matching closing quote. Backslash escapes are kept verbatim (a backslash
+     * protects the following character from closing the string).
+     *
+     * @throws SoqlParserError if the string is not terminated
+     */
+    readQuotedString(): string {
+        this.skipWhitespace()
+
+        const quote = this.buffer.peek()
+        if (quote !== BYTE_MAP.singleQuote && quote !== BYTE_MAP.doubleQuote) {
+            throw new SoqlParserError('Expected string literal')
+        }
+
+        let extracted = String.fromCharCode(this.buffer.next())
+        while (true) {
+            const byte = this.buffer.peek()
+            if (byte === null) {
+                throw new SoqlParserError(
+                    `Unterminated string literal: ${extracted}`,
+                )
+            }
+            this.buffer.next()
+            extracted += String.fromCharCode(byte)
+            if (byte === BYTE_MAP.backslash) {
+                const escaped = this.buffer.peek()
+                if (escaped === null) {
+                    throw new SoqlParserError(
+                        `Unterminated string literal: ${extracted}`,
+                    )
+                }
+                this.buffer.next()
+                extracted += String.fromCharCode(escaped)
+            } else if (byte === quote) {
+                return extracted
+            }
+        }
+    }
+
+    /**
      * Reads and consumes the next SOQL keyword from the buffer.
      *
      * @returns The consumed keyword
