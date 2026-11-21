@@ -13,6 +13,7 @@ export {
     SoqlDateTimeLiteral,
     SoqlBindVariable,
     SoqlNullLiteral,
+    SoqlCurrencyLiteral,
 } from './SoqlValueExpr'
 
 // Fields

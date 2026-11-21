@@ -4,6 +4,9 @@ import { DATE_LITERALS, DATE_LITERALS_DYNAMIC } from '../types.js'
 import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 
+// ISO 4217 currency code immediately followed by an amount, e.g. USD5000
+const CURRENCY_RE = /^[A-Za-z]{3}\d+(\.\d+)?$/
+
 // Base class for all value expressions
 export abstract class SoqlValueExpr extends SoqlBase {
     static fromString(string: string): SoqlValueExpr {
@@ -39,6 +42,8 @@ export abstract class SoqlValueExpr extends SoqlBase {
                 )
             ) {
                 return SoqlDateLiteral.fromBuffer(buffer)
+            } else if (CURRENCY_RE.test(nextStr)) {
+                return SoqlCurrencyLiteral.fromBuffer(buffer)
             } else if (nextStr.toLowerCase() === 'null') {
                 return SoqlNullLiteral.fromBuffer(buffer)
             } else {
@@ -393,5 +398,34 @@ export class SoqlNullLiteral extends SoqlValueExpr {
             throw new SoqlParserError(`Invalid null literal: ${valueString}`)
         }
         return new SoqlNullLiteral()
+    }
+}
+
+// Currency literal (ISO currency code immediately followed by an amount, e.g. USD5000)
+export class SoqlCurrencyLiteral extends SoqlValueExpr {
+    /** Upper-case ISO currency code, e.g. `USD` */
+    currency: string
+    amount: number
+
+    constructor(currency: string, amount: number) {
+        super()
+        this.currency = currency
+        this.amount = amount
+    }
+
+    static fromString(value: string): SoqlCurrencyLiteral {
+        if (!CURRENCY_RE.test(value)) {
+            throw new SoqlParserError(
+                `Invalid currency literal (expected e.g. USD5000): ${value}`,
+            )
+        }
+        return new SoqlCurrencyLiteral(
+            value.slice(0, 3).toUpperCase(),
+            Number(value.slice(3)),
+        )
+    }
+
+    static fromBuffer(buffer: SoqlStringBuffer): SoqlCurrencyLiteral {
+        return SoqlCurrencyLiteral.fromString(buffer.readString())
     }
 }
