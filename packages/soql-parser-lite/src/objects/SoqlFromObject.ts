@@ -1,3 +1,5 @@
+import { SoqlParserError } from '../errors.js'
+import { isValidIdentifier } from '../utils.js'
 import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 
@@ -19,12 +21,22 @@ export class SoqlFromObject extends SoqlBase {
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlFromObject {
         const objectName = buffer.readString()
+        if (!isValidIdentifier(objectName)) {
+            throw new SoqlParserError(
+                objectName === ''
+                    ? 'Expected an object name after FROM'
+                    : `Invalid object name: ${objectName}`,
+            )
+        }
 
         buffer.skipWhitespace()
         let alias: string | undefined = undefined
         const possibleKeyword = buffer.peekKeyword()
-        if (!possibleKeyword) {
+        if (!possibleKeyword && buffer.peekString() !== '') {
             alias = buffer.readString()
+            if (!isValidIdentifier(alias)) {
+                throw new SoqlParserError(`Invalid alias: ${alias}`)
+            }
         }
 
         return new SoqlFromObject({ name: objectName, alias })

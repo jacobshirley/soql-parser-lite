@@ -25,7 +25,12 @@ export class SoqlAggregateField extends SoqlBase {
         buffer.expect(BYTE_MAP.openParen)
         buffer.skipWhitespace()
 
-        const field = SoqlField.fromBuffer(buffer)
+        // `COUNT()` is valid SOQL and takes no argument
+        const field =
+            functionName.toUpperCase() === 'COUNT' &&
+            buffer.peek() === BYTE_MAP.closeParen
+                ? new SoqlField('')
+                : SoqlField.fromBuffer(buffer)
         buffer.skipWhitespace()
         buffer.expect(BYTE_MAP.closeParen)
         buffer.skipWhitespace()
