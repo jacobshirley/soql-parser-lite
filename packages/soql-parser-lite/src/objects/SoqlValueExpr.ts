@@ -31,13 +31,7 @@ export abstract class SoqlValueExpr extends SoqlBase {
                 return SoqlDateTimeLiteral.fromBuffer(buffer)
             } else if (/^\d{4}-\d{2}-\d{2}$/.test(nextStr)) {
                 return SoqlDateValueLiteral.fromBuffer(buffer)
-            } else if (DATE_LITERALS.includes(nextStr.toUpperCase() as any)) {
-                return SoqlDateLiteral.fromBuffer(buffer)
-            } else if (
-                DATE_LITERALS_DYNAMIC.some((prefix) =>
-                    nextStr.toUpperCase().startsWith(prefix),
-                )
-            ) {
+            } else if (isDateLiteral(nextStr)) {
                 return SoqlDateLiteral.fromBuffer(buffer)
             } else if (nextStr.toLowerCase() === 'null') {
                 return SoqlNullLiteral.fromBuffer(buffer)
@@ -185,140 +179,52 @@ export class SoqlDateLiteral extends SoqlValueExpr {
     }
 
     static fromString(value: string): SoqlDateLiteral {
-        const DATE_LITERALS = [
-            'TODAY',
-            'YESTERDAY',
-            'TOMORROW',
-            'THIS_WEEK',
-            'LAST_WEEK',
-            'NEXT_WEEK',
-            'THIS_MONTH',
-            'LAST_MONTH',
-            'NEXT_MONTH',
-            'LAST_90_DAYS',
-            'NEXT_90_DAYS',
-            'THIS_QUARTER',
-            'LAST_QUARTER',
-            'NEXT_QUARTER',
-            'THIS_YEAR',
-            'LAST_YEAR',
-            'NEXT_YEAR',
-            'THIS_FISCAL_QUARTER',
-            'LAST_FISCAL_QUARTER',
-            'NEXT_FISCAL_QUARTER',
-            'THIS_FISCAL_YEAR',
-            'LAST_FISCAL_YEAR',
-            'NEXT_FISCAL_YEAR',
-        ]
-
-        const DATE_LITERALS_DYNAMIC = [
-            'LAST_N_DAYS',
-            'NEXT_N_DAYS',
-            'N_DAYS_AGO',
-            'NEXT_N_WEEKS',
-            'LAST_N_WEEKS',
-            'N_WEEKS_AGO',
-            'NEXT_N_MONTHS',
-            'LAST_N_MONTHS',
-            'N_MONTHS_AGO',
-            'NEXT_N_QUARTERS',
-            'LAST_N_QUARTERS',
-            'N_QUARTERS_AGO',
-            'NEXT_N_YEARS',
-            'LAST_N_YEARS',
-            'N_YEARS_AGO',
-            'NEXT_N_FISCAL_YEARS',
-            'LAST_N_FISCAL_YEARS',
-            'N_FISCAL_YEARS_AGO',
-            'NEXT_N_FISCAL_QUARTERS',
-            'LAST_N_FISCAL_QUARTERS',
-        ]
-
-        if (DATE_LITERALS.includes(value)) {
-            return new SoqlDateLiteral(value)
-        }
-
-        for (const prefix of DATE_LITERALS_DYNAMIC) {
-            if (value.startsWith(prefix)) {
-                const [literalType, nStr] = value.split(':')
-                const n = Number(nStr)
-                if (!isNaN(n)) {
-                    return new SoqlDateLiteral({ type: literalType, n })
-                }
-            }
-        }
-
-        throw new SoqlParserError(`Invalid date literal: ${value}`)
+        return parseDateLiteral(value)
     }
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlDateLiteral {
-        const valueString = buffer.readString()
-
-        const DATE_LITERALS = [
-            'TODAY',
-            'YESTERDAY',
-            'TOMORROW',
-            'THIS_WEEK',
-            'LAST_WEEK',
-            'NEXT_WEEK',
-            'THIS_MONTH',
-            'LAST_MONTH',
-            'NEXT_MONTH',
-            'LAST_90_DAYS',
-            'NEXT_90_DAYS',
-            'THIS_QUARTER',
-            'LAST_QUARTER',
-            'NEXT_QUARTER',
-            'THIS_YEAR',
-            'LAST_YEAR',
-            'NEXT_YEAR',
-            'THIS_FISCAL_QUARTER',
-            'LAST_FISCAL_QUARTER',
-            'NEXT_FISCAL_QUARTER',
-            'THIS_FISCAL_YEAR',
-            'LAST_FISCAL_YEAR',
-            'NEXT_FISCAL_YEAR',
-        ]
-
-        const DATE_LITERALS_DYNAMIC = [
-            'LAST_N_DAYS',
-            'NEXT_N_DAYS',
-            'N_DAYS_AGO',
-            'NEXT_N_WEEKS',
-            'LAST_N_WEEKS',
-            'N_WEEKS_AGO',
-            'NEXT_N_MONTHS',
-            'LAST_N_MONTHS',
-            'N_MONTHS_AGO',
-            'NEXT_N_QUARTERS',
-            'LAST_N_QUARTERS',
-            'N_QUARTERS_AGO',
-            'NEXT_N_YEARS',
-            'LAST_N_YEARS',
-            'N_YEARS_AGO',
-            'NEXT_N_FISCAL_YEARS',
-            'LAST_N_FISCAL_YEARS',
-            'N_FISCAL_YEARS_AGO',
-            'NEXT_N_FISCAL_QUARTERS',
-            'LAST_N_FISCAL_QUARTERS',
-        ]
-
-        if (DATE_LITERALS.includes(valueString)) {
-            return new SoqlDateLiteral(valueString)
-        }
-
-        for (const prefix of DATE_LITERALS_DYNAMIC) {
-            if (valueString.startsWith(prefix)) {
-                const [literalType, nStr] = valueString.split(':')
-                const n = Number(nStr)
-                if (!isNaN(n)) {
-                    return new SoqlDateLiteral({ type: literalType, n })
-                }
-            }
-        }
-
-        throw new SoqlParserError(`Invalid date literal: ${valueString}`)
+        return parseDateLiteral(buffer.readString())
     }
+}
+
+/**
+ * Matches `TODAY` or `LAST_N_DAYS:n` style literals case-insensitively and
+ * exactly (no prefix matching). `n` must be a non-negative integer.
+ */
+const DYNAMIC_DATE_LITERAL_RE = /^([A-Za-z_]+):(\d+)$/
+
+function isDateLiteral(text: string): boolean {
+    const upper = text.toUpperCase()
+    if ((DATE_LITERALS as readonly string[]).includes(upper)) return true
+    // NAME:... with a known dynamic literal name is routed to the date literal
+    // parser so malformed forms (empty or non-integer n) get a clear error
+    const name = upper.split(':')[0]
+    return (
+        text.includes(':') &&
+        (DATE_LITERALS_DYNAMIC as readonly string[]).includes(name)
+    )
+}
+
+function parseDateLiteral(text: string): SoqlDateLiteral {
+    const upper = text.toUpperCase()
+    if ((DATE_LITERALS as readonly string[]).includes(upper)) {
+        return new SoqlDateLiteral(upper)
+    }
+
+    const match = DYNAMIC_DATE_LITERAL_RE.exec(text)
+    if (
+        match &&
+        (DATE_LITERALS_DYNAMIC as readonly string[]).includes(
+            match[1].toUpperCase(),
+        )
+    ) {
+        const n = Number(match[2])
+        if (Number.isSafeInteger(n)) {
+            return new SoqlDateLiteral({ type: match[1].toUpperCase(), n })
+        }
+    }
+
+    throw new SoqlParserError(`Invalid date literal: ${text}`)
 }
 
 // DateTime literal (ISO 8601 format)

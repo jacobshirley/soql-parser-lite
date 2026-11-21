@@ -79,6 +79,7 @@ export const DATE_LITERALS_DYNAMIC = [
     'N_FISCAL_YEARS_AGO',
     'NEXT_N_FISCAL_QUARTERS',
     'LAST_N_FISCAL_QUARTERS',
+    'N_FISCAL_QUARTERS_AGO',
 ] as const
 
 /**
