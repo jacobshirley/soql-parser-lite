@@ -4,6 +4,7 @@ import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 import { SoqlField } from './SoqlField.js'
 import { SoqlAggregateField } from './SoqlAggregateField.js'
 import { SoqlSubquery } from './SoqlSubquery.js'
+import { RESERVED_ALIAS_KEYWORDS } from '../types.js'
 
 export class SoqlSelectItem extends SoqlBase {
     item: SoqlField | SoqlAggregateField | SoqlSubquery
@@ -54,8 +55,10 @@ export class SoqlSelectItem extends SoqlBase {
         }
 
         let alias: string | undefined = undefined
-        const possibleKeyword = buffer.peekKeyword()
-        if (!possibleKeyword) {
+        const nextWord = buffer.peekString().toUpperCase()
+        if (
+            !(RESERVED_ALIAS_KEYWORDS as readonly string[]).includes(nextWord)
+        ) {
             alias = buffer.readString()
         }
 
