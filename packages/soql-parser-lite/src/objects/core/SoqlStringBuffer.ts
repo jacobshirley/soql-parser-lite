@@ -90,6 +90,20 @@ export class SoqlStringBuffer {
     }
 
     /**
+     * Reads and consumes everything left in the buffer (used for error messages).
+     */
+    readRemaining(): string {
+        let rest = ''
+        let currByte = this.buffer.peek()
+        while (currByte !== null) {
+            rest += String.fromCharCode(currByte)
+            this.buffer.next()
+            currByte = this.buffer.peek()
+        }
+        return rest
+    }
+
+    /**
      * Reads and consumes the next SOQL keyword from the buffer.
      *
      * @returns The consumed keyword

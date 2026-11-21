@@ -41,7 +41,18 @@ export class SoqlQuery extends SoqlBase {
 
     static fromString(string: string): SoqlQuery {
         const stringBuffer = new SoqlStringBuffer(string)
-        return SoqlQuery.fromBuffer(stringBuffer)
+        const query = SoqlQuery.fromBuffer(stringBuffer)
+
+        // The whole input must be consumed: anything left over is syntax this
+        // parser did not understand and would otherwise be silently dropped.
+        stringBuffer.skipWhitespace()
+        if (stringBuffer.peek() !== null) {
+            throw new SoqlParserError(
+                `Unexpected input after end of query: ${stringBuffer.readRemaining().trim()}`,
+            )
+        }
+
+        return query
     }
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlQuery {
