@@ -119,6 +119,8 @@ export const SOQL_KEYWORDS = [
     'ROLLUP',
     'CUBE',
     'DISTINCT',
+    'FOR',
+    'UPDATE',
 ] as const
 
 /**
