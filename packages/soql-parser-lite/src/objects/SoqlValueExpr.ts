@@ -4,6 +4,12 @@ import { DATE_LITERALS, DATE_LITERALS_DYNAMIC } from '../types.js'
 import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 
+// YYYY-MM-DD
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+// YYYY-MM-DDThh:mm:ss[.fff](Z|+hh:mm|-hh:mm)
+const DATETIME_RE =
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
+
 // Base class for all value expressions
 export abstract class SoqlValueExpr extends SoqlBase {
     static fromString(string: string): SoqlValueExpr {
@@ -21,16 +27,15 @@ export abstract class SoqlValueExpr extends SoqlBase {
             return SoqlBindVariable.fromBuffer(buffer)
         } else {
             const nextStr = buffer.peekString()
-            if (/^[+-]?\d/.test(nextStr)) {
+            // Date/dateTime must be tested before numbers: both start with digits
+            if (DATETIME_RE.test(nextStr)) {
+                return SoqlDateTimeLiteral.fromBuffer(buffer)
+            } else if (DATE_RE.test(nextStr)) {
+                return SoqlDateValueLiteral.fromBuffer(buffer)
+            } else if (/^[+-]?\d/.test(nextStr)) {
                 return SoqlNumberLiteral.fromBuffer(buffer)
             } else if (/^(true|false)/i.test(nextStr)) {
                 return SoqlBooleanLiteral.fromBuffer(buffer)
-            } else if (
-                /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(nextStr)
-            ) {
-                return SoqlDateTimeLiteral.fromBuffer(buffer)
-            } else if (/^\d{4}-\d{2}-\d{2}$/.test(nextStr)) {
-                return SoqlDateValueLiteral.fromBuffer(buffer)
             } else if (DATE_LITERALS.includes(nextStr.toUpperCase() as any)) {
                 return SoqlDateLiteral.fromBuffer(buffer)
             } else if (
@@ -144,7 +149,7 @@ export class SoqlDateValueLiteral extends SoqlValueExpr {
     }
 
     static fromString(value: string): SoqlDateValueLiteral {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        if (!DATE_RE.test(value)) {
             throw new SoqlParserError(
                 `Invalid date literal format (expected YYYY-MM-DD): ${value}`,
             )
@@ -154,7 +159,7 @@ export class SoqlDateValueLiteral extends SoqlValueExpr {
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlDateValueLiteral {
         const valueString = buffer.readString()
-        if (/^\d{4}-\d{2}-\d{2}$/.test(valueString)) {
+        if (DATE_RE.test(valueString)) {
             return new SoqlDateValueLiteral(valueString)
         }
         throw new SoqlParserError(
@@ -331,7 +336,7 @@ export class SoqlDateTimeLiteral extends SoqlValueExpr {
     }
 
     static fromString(value: string): SoqlDateTimeLiteral {
-        if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(value)) {
+        if (!DATETIME_RE.test(value)) {
             throw new SoqlParserError(
                 `Invalid datetime literal format (expected ISO 8601): ${value}`,
             )
@@ -341,9 +346,7 @@ export class SoqlDateTimeLiteral extends SoqlValueExpr {
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlDateTimeLiteral {
         const valueString = buffer.readString()
-        if (
-            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(valueString)
-        ) {
+        if (DATETIME_RE.test(valueString)) {
             return new SoqlDateTimeLiteral(valueString)
         }
         throw new SoqlParserError(
