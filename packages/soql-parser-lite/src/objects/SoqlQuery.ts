@@ -1,4 +1,6 @@
+import { BYTE_MAP } from '../byte-map.js'
 import { SoqlParserError } from '../errors.js'
+import { SoqlBindVariable } from './SoqlValueExpr.js'
 import { SoqlBase } from './core/SoqlBase.js'
 import { SoqlStringBuffer } from './core/SoqlStringBuffer.js'
 import { SoqlSelectClause } from './SoqlSelectClause.js'
@@ -15,8 +17,10 @@ export class SoqlQuery extends SoqlBase {
     groupBy?: SoqlGroupByClause
     having?: SoqlHavingClause
     orderBy?: SoqlOrderByClause
-    limit?: number
-    offset?: number
+    /** A non-negative integer, or a bind variable (`LIMIT :n`) */
+    limit?: number | SoqlBindVariable
+    /** A non-negative integer, or a bind variable (`OFFSET :n`) */
+    offset?: number | SoqlBindVariable
 
     constructor(options: {
         select: SoqlSelectClause
@@ -25,8 +29,8 @@ export class SoqlQuery extends SoqlBase {
         groupBy?: SoqlGroupByClause
         having?: SoqlHavingClause
         orderBy?: SoqlOrderByClause
-        limit?: number
-        offset?: number
+        limit?: number | SoqlBindVariable
+        offset?: number | SoqlBindVariable
     }) {
         super()
         this.select = options.select
@@ -53,8 +57,8 @@ export class SoqlQuery extends SoqlBase {
         let groupBy: SoqlGroupByClause | undefined = undefined
         let having: SoqlHavingClause | undefined = undefined
         let orderBy: SoqlOrderByClause | undefined = undefined
-        let limit: number | undefined = undefined
-        let offset: number | undefined = undefined
+        let limit: number | SoqlBindVariable | undefined = undefined
+        let offset: number | SoqlBindVariable | undefined = undefined
 
         buffer.skipWhitespace()
         let keyword = buffer.peekKeyword()
@@ -86,10 +90,16 @@ export class SoqlQuery extends SoqlBase {
         if (keyword === 'LIMIT') {
             buffer.readKeyword() // consume LIMIT
             buffer.skipWhitespace()
-            const limitString = buffer.readString()
-            limit = Number(limitString)
-            if (isNaN(limit)) {
-                throw new SoqlParserError(`Invalid LIMIT value: ${limitString}`)
+            if (buffer.peek() === BYTE_MAP.colon) {
+                limit = SoqlBindVariable.fromBuffer(buffer)
+            } else {
+                const limitString = buffer.readString()
+                limit = Number(limitString)
+                if (isNaN(limit)) {
+                    throw new SoqlParserError(
+                        `Invalid LIMIT value: ${limitString}`,
+                    )
+                }
             }
             buffer.skipWhitespace()
             keyword = buffer.peekKeyword()
@@ -98,12 +108,16 @@ export class SoqlQuery extends SoqlBase {
         if (keyword === 'OFFSET') {
             buffer.readKeyword() // consume OFFSET
             buffer.skipWhitespace()
-            const offsetString = buffer.readString()
-            offset = Number(offsetString)
-            if (isNaN(offset)) {
-                throw new SoqlParserError(
-                    `Invalid OFFSET value: ${offsetString}`,
-                )
+            if (buffer.peek() === BYTE_MAP.colon) {
+                offset = SoqlBindVariable.fromBuffer(buffer)
+            } else {
+                const offsetString = buffer.readString()
+                offset = Number(offsetString)
+                if (isNaN(offset)) {
+                    throw new SoqlParserError(
+                        `Invalid OFFSET value: ${offsetString}`,
+                    )
+                }
             }
         }
 
