@@ -16,6 +16,7 @@ import {
     SoqlAndExpr,
     SoqlOrExpr,
     SoqlParenExpr,
+    SoqlNotExpr,
 } from '../../src/objects/SoqlBooleanExpr'
 import {
     SoqlField,
@@ -24,6 +25,8 @@ import {
     SoqlBooleanLiteral,
 } from '../../src'
 import { SoqlParserError } from '../../src/errors'
+import { SoqlQuery } from '../../src/objects/SoqlQuery'
+import { parseSoqlQuery } from '../../src/helpers'
 
 describe('SoqlBooleanExpr', () => {
     describe('Comparison Operators', () => {
@@ -105,9 +108,9 @@ describe('SoqlBooleanExpr', () => {
             expect(Array.isArray(expr.right)).toBe(false)
         })
 
-        it('should parse NIN (NOT IN) operator', () => {
+        it('should parse NOT IN operator', () => {
             const expr = SoqlBooleanExpr.fromString(
-                "Status NIN ('Inactive', 'Deleted')",
+                "Status NOT IN ('Inactive', 'Deleted')",
             ) as SoqlNinExpr
             expect(expr).toBeInstanceOf(SoqlNinExpr)
             expect(Array.isArray(expr.right)).toBe(true)
@@ -278,5 +281,53 @@ describe('SoqlBooleanExpr', () => {
             expect(expr.left).toBeInstanceOf(SoqlField)
             expect(Array.isArray(expr.right)).toBe(true)
         })
+    })
+})
+
+describe('NOT and NOT IN (#37)', () => {
+    const where = (clause: string) =>
+        parseSoqlQuery(`SELECT Id FROM Account WHERE ${clause}`).where!
+            .expr as any
+
+    it('parses NOT before a comparison inside parentheses', () => {
+        const expr = where("AnnualRevenue > 0 AND (NOT Type = 'Prospect')")
+        expect(expr).toBeInstanceOf(SoqlAndExpr)
+        const not = expr.right.expr
+        expect(not).toBeInstanceOf(SoqlNotExpr)
+        expect(not.expr).toBeInstanceOf(SoqlEqlExpr)
+        expect(not.expr.right.value).toBe('Prospect')
+    })
+
+    it('NOT binds tighter than AND', () => {
+        const expr = where('NOT A = 1 AND B = 2')
+        expect(expr).toBeInstanceOf(SoqlAndExpr)
+        expect(expr.left).toBeInstanceOf(SoqlNotExpr)
+        expect(expr.right).toBeInstanceOf(SoqlEqlExpr)
+    })
+
+    it('parses NOT applied to a parenthesised expression', () => {
+        const expr = where('NOT (A = 1 OR B = 2)')
+        expect(expr).toBeInstanceOf(SoqlNotExpr)
+        expect(expr.expr).toBeInstanceOf(SoqlParenExpr)
+    })
+
+    it('parses NOT IN with a value list', () => {
+        const expr = where("BillingState NOT IN ('CA', 'NY')")
+        expect(expr).toBeInstanceOf(SoqlNinExpr)
+        expect(expr.right.map((v: any) => v.value)).toEqual(['CA', 'NY'])
+    })
+
+    it('parses NOT IN with a subquery', () => {
+        const expr = where('Id NOT IN (SELECT AccountId FROM Contact)')
+        expect(expr).toBeInstanceOf(SoqlNinExpr)
+        expect(expr.right).toBeInstanceOf(SoqlQuery)
+    })
+
+    it('rejects NOT followed by something other than IN', () => {
+        expect(() => where("Name NOT LIKE 'a%'")).toThrow(SoqlParserError)
+    })
+
+    it.each(['X NIN (1, 2)', "Name NLIKE 'a%'"])('rejects non-SOQL %s', (c) => {
+        expect(() => where(c)).toThrow(SoqlParserError)
     })
 })

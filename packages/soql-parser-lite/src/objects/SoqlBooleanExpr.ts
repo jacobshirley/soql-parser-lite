@@ -70,6 +70,14 @@ export abstract class SoqlBooleanExpr extends SoqlBase {
     ): SoqlBooleanExpr {
         buffer.skipWhitespace()
 
+        if (buffer.peekKeyword() === 'NOT') {
+            buffer.readKeyword() // consume NOT
+            // NOT binds tighter than AND / OR and applies to one primary expr
+            return new SoqlNotExpr(
+                SoqlBooleanExpr.parsePrimaryExpr(buffer, allowAggregates),
+            )
+        }
+
         if (buffer.peek() === BYTE_MAP.openParen) {
             return SoqlParenExpr.fromBuffer(buffer, allowAggregates)
         } else {
@@ -117,7 +125,18 @@ export class SoqlComparisonExpr<T = SoqlValueExpr> extends SoqlBooleanExpr {
 
         buffer.skipWhitespace()
 
-        const operatorString = buffer.readString().toUpperCase()
+        let operatorString = buffer.readString().toUpperCase()
+        if (operatorString === 'NOT') {
+            // Two-word operator: NOT IN
+            buffer.skipWhitespace()
+            const second = buffer.readString().toUpperCase()
+            if (second !== 'IN') {
+                throw new SoqlParserError(
+                    `Expected IN after NOT, got: ${second}`,
+                )
+            }
+            operatorString = 'NOT IN'
+        }
         if (!OPERATORS.includes(operatorString as SoqlOperator)) {
             throw new SoqlParserError(
                 `Expected comparison operator, got: ${operatorString}`,
@@ -127,7 +146,7 @@ export class SoqlComparisonExpr<T = SoqlValueExpr> extends SoqlBooleanExpr {
 
         buffer.skipWhitespace()
 
-        if (operator === 'IN' || operator === 'NIN') {
+        if (operator === 'IN' || operator === 'NOT IN') {
             let right: SoqlQuery | SoqlValueExpr[]
 
             // Check if this is a subquery (SELECT) or a list of values
@@ -215,9 +234,6 @@ export class SoqlComparisonExpr<T = SoqlValueExpr> extends SoqlBooleanExpr {
                 case 'LIKE':
                     expr = new SoqlLikeExpr({ left, right })
                     break
-                case 'NLIKE':
-                    expr = new SoqlNlineExpr({ left, right })
-                    break
                 default:
                     throw new SoqlParserError(
                         `Unsupported operator: ${operator}`,
@@ -243,7 +259,6 @@ export class SoqlLeExpr extends SoqlComparisonExpr<SoqlValueExpr> {}
 export class SoqlGtExpr extends SoqlComparisonExpr<SoqlValueExpr> {}
 export class SoqlGeExpr extends SoqlComparisonExpr<SoqlValueExpr> {}
 export class SoqlLikeExpr extends SoqlComparisonExpr<SoqlValueExpr> {}
-export class SoqlNlineExpr extends SoqlComparisonExpr<SoqlValueExpr> {}
 export class SoqlIncludesExpr extends SoqlComparisonExpr<SoqlValueExpr[]> {}
 export class SoqlExcludesExpr extends SoqlComparisonExpr<SoqlValueExpr[]> {}
 
@@ -261,6 +276,15 @@ export abstract class SoqlLogicalExpr extends SoqlBooleanExpr {
 export class SoqlAndExpr extends SoqlLogicalExpr {}
 
 export class SoqlOrExpr extends SoqlLogicalExpr {}
+
+export class SoqlNotExpr extends SoqlBooleanExpr {
+    expr: SoqlBooleanExpr
+
+    constructor(expr: SoqlBooleanExpr) {
+        super()
+        this.expr = expr
+    }
+}
 
 export class SoqlParenExpr extends SoqlBooleanExpr {
     expr: SoqlBooleanExpr
