@@ -69,14 +69,8 @@ export class SoqlStringLiteral extends SoqlValueExpr {
     }
 
     static fromBuffer(buffer: SoqlStringBuffer): SoqlStringLiteral {
-        const valueString = buffer.readString()
-        if (
-            (valueString.startsWith("'") && valueString.endsWith("'")) ||
-            (valueString.startsWith('"') && valueString.endsWith('"'))
-        ) {
-            return new SoqlStringLiteral(valueString.slice(1, -1))
-        }
-        throw new SoqlParserError(`Invalid string literal: ${valueString}`)
+        const valueString = buffer.readQuotedString()
+        return new SoqlStringLiteral(valueString.slice(1, -1))
     }
 }
 

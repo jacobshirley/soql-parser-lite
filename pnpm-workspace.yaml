@@ -1,13 +1,13 @@
 packages:
-  - 'packages/*'
+    - 'packages/*'
 
 packageExtensions:
-  '@vitest/browser':
-    peerDependencies:
-      '@vitest/runner': '*'
+    '@vitest/browser':
+        peerDependencies:
+            '@vitest/runner': '*'
 
 allowBuilds:
-  esbuild: true
+    esbuild: true
 
 linkWorkspacePackages: true
 preferWorkspacePackages: true
