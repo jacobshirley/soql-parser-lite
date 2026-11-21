@@ -1,4 +1,4 @@
-import { SoqlQuery } from './objects'
+import { SoqlQuery } from './objects/index.js'
 
 /**
  * Parses a SOQL query string and returns the structured query representation.
