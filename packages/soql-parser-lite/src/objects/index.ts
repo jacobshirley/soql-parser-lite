@@ -21,6 +21,7 @@ export { SoqlAggregateField } from './SoqlAggregateField'
 
 // Select
 export { SoqlSubquery } from './SoqlSubquery'
+export { SoqlTypeofItem, SoqlTypeofWhen } from './SoqlTypeofItem'
 export { SoqlSelectItem } from './SoqlSelectItem'
 export { SoqlSelectClause } from './SoqlSelectClause'
 
