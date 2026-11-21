@@ -12,7 +12,7 @@ A zero-dependency, TypeScript/JavaScript parser for SOQL (Salesforce Object Quer
 - 🔍 **Complete SOQL Support**: Parses all major SOQL clauses (SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET)
 - 📦 **TypeScript First**: Fully typed API with comprehensive type definitions
 - 🚀 **Zero Dependencies**: Lightweight with no external runtime dependencies
-- 🔄 **Streaming Support**: Can parse queries incrementally from streams
+- 📝 **String Input**: Parses a complete query string (`parseSoqlQuery(soql: string)`); incremental parsing from streams is not currently supported
 - 🎯 **Accurate**: Handles complex queries including subqueries, aggregate functions, and nested field paths
 - 🛡️ **Error Handling**: Provides detailed error messages for malformed queries
 
