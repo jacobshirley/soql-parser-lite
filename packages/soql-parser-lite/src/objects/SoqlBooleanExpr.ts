@@ -120,7 +120,7 @@ export class SoqlComparisonExpr<T = SoqlValueExpr> extends SoqlBooleanExpr {
         const operatorString = buffer.readString().toUpperCase()
         if (!OPERATORS.includes(operatorString as SoqlOperator)) {
             throw new SoqlParserError(
-                `Expected comparison operator, got: ${operatorString}`,
+                `Expected comparison operator, got: ${operatorString || buffer.describeNext()}`,
             )
         }
         const operator = operatorString as SoqlOperator
