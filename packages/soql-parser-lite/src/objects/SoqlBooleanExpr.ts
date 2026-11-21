@@ -30,14 +30,26 @@ export abstract class SoqlBooleanExpr extends SoqlBase {
         allowAggregates: boolean,
     ): SoqlBooleanExpr {
         let left = SoqlBooleanExpr.parseAndExpr(buffer, allowAggregates)
+        let sawOr = false
+        let sawAnd = left instanceof SoqlAndExpr
 
         buffer.skipWhitespace()
         while (buffer.peekKeyword() === 'OR') {
             buffer.readKeyword() // consume OR
+            sawOr = true
             buffer.skipWhitespace()
             const right = SoqlBooleanExpr.parseAndExpr(buffer, allowAggregates)
+            sawAnd ||= right instanceof SoqlAndExpr
             left = new SoqlOrExpr({ left, right })
             buffer.skipWhitespace()
+        }
+
+        // An AND directly under an OR (parentheses would wrap it in a
+        // SoqlParenExpr) means AND and OR were mixed without parentheses.
+        if (sawOr && sawAnd) {
+            throw new SoqlParserError(
+                'Parentheses are required when mixing AND and OR',
+            )
         }
 
         return left
@@ -138,6 +150,11 @@ export class SoqlComparisonExpr<T = SoqlValueExpr> extends SoqlBooleanExpr {
             if (nextStr.toUpperCase() === 'SELECT') {
                 // Parse as subquery
                 const query = SoqlQuery.fromBuffer(buffer)
+                if (query.select.items.length !== 1) {
+                    throw new SoqlParserError(
+                        'A semi-join subquery must select exactly one field',
+                    )
+                }
                 buffer.skipWhitespace()
                 buffer.expect(BYTE_MAP.closeParen)
                 right = query

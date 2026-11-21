@@ -217,21 +217,23 @@ describe('SOQL Parsing', () => {
     describe('Where Clause Parsing', () => {
         it('should parse a basic where clause', () => {
             const soql =
-                "  WHERE Name = 'John' AND Age >= 30 OR IsActive = true "
+                "  WHERE (Name = 'John' AND Age >= 30) OR IsActive = true "
             const where = SoqlWhereClause.fromString(soql)
             expect(where).toEqual(
                 new SoqlWhereClause({
                     expr: new SoqlOrExpr({
-                        left: new SoqlAndExpr({
-                            left: new SoqlEqlExpr({
-                                left: new SoqlField('Name'),
-                                right: new SoqlStringLiteral('John'),
+                        left: new SoqlParenExpr(
+                            new SoqlAndExpr({
+                                left: new SoqlEqlExpr({
+                                    left: new SoqlField('Name'),
+                                    right: new SoqlStringLiteral('John'),
+                                }),
+                                right: new SoqlGeExpr({
+                                    left: new SoqlField('Age'),
+                                    right: new SoqlNumberLiteral(30),
+                                }),
                             }),
-                            right: new SoqlGeExpr({
-                                left: new SoqlField('Age'),
-                                right: new SoqlNumberLiteral(30),
-                            }),
-                        }),
+                        ),
                         right: new SoqlEqlExpr({
                             left: new SoqlField('IsActive'),
                             right: new SoqlBooleanLiteral(true),

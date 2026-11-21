@@ -40,3 +40,35 @@ export function bytesToNumber(bytes: Uint8Array): number {
     const str = bytesToString(bytes)
     return Number(str)
 }
+
+/**
+ * Words that start or structure a clause and so can never be a field or object
+ * name. `DISTINCT` is included because SOQL has no `SELECT DISTINCT`.
+ * @internal
+ */
+const NON_IDENTIFIER_WORDS = new Set([
+    'SELECT',
+    'FROM',
+    'WHERE',
+    'GROUP',
+    'HAVING',
+    'ORDER',
+    'LIMIT',
+    'AND',
+    'OR',
+    'NOT',
+    'DISTINCT',
+])
+
+/**
+ * Whether text is a valid SOQL identifier: letters, digits and underscores
+ * (not starting with a digit), optionally dot-separated for relationships
+ * (`Account.Owner.Name`), and not a clause keyword.
+ * @internal
+ */
+export function isValidIdentifier(text: string): boolean {
+    return (
+        /^[\p{L}_][\p{L}\p{N}_]*(\.[\p{L}_][\p{L}\p{N}_]*)*$/u.test(text) &&
+        !NON_IDENTIFIER_WORDS.has(text.toUpperCase())
+    )
+}

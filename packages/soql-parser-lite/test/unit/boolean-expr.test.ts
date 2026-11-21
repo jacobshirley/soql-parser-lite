@@ -168,12 +168,20 @@ describe('SoqlBooleanExpr', () => {
             expect(expr.left).toBeInstanceOf(SoqlOrExpr)
         })
 
-        it('should handle AND and OR precedence', () => {
+        it('should require parentheses when mixing AND and OR', () => {
+            expect(() =>
+                SoqlBooleanExpr.fromString(
+                    "Name = 'Test' AND Age > 18 OR Status = 'Active'",
+                ),
+            ).toThrow(SoqlParserError)
+        })
+
+        it('should accept AND with OR when parenthesised', () => {
             const expr = SoqlBooleanExpr.fromString(
-                "Name = 'Test' AND Age > 18 OR Status = 'Active'",
+                "(Name = 'Test' AND Age > 18) OR Status = 'Active'",
             ) as SoqlOrExpr
             expect(expr).toBeInstanceOf(SoqlOrExpr)
-            expect(expr.left).toBeInstanceOf(SoqlAndExpr)
+            expect(expr.left).toBeInstanceOf(SoqlParenExpr)
             expect(expr.right).toBeInstanceOf(SoqlEqlExpr)
         })
     })
