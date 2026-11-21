@@ -41,5 +41,12 @@ export { SoqlOrderByClause } from './SoqlOrderByClause'
 export { SoqlLimitClause } from './SoqlLimitClause'
 export { SoqlOffsetClause } from './SoqlOffsetClause'
 
+export {
+    SoqlWithClause,
+    SoqlDataCategoryFilter,
+    DATA_CATEGORY_SELECTORS,
+} from './SoqlWithClause'
+export type { SoqlWithKind, SoqlDataCategorySelector } from './SoqlWithClause'
+
 // Query
 export { SoqlQuery } from './SoqlQuery'
