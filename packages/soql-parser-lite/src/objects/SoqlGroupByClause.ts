@@ -40,6 +40,7 @@ export class SoqlGroupByClause extends SoqlBase {
         if (possibleKeyword === 'ROLLUP' || possibleKeyword === 'CUBE') {
             buffer.readKeyword() // consume the keyword
             groupingFunction = possibleKeyword
+            buffer.skipWhitespace() // `ROLLUP (a, b)` is the documented form
             buffer.expect(BYTE_MAP.openParen)
             buffer.skipWhitespace()
         }
