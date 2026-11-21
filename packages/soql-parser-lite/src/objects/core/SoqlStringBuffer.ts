@@ -2,6 +2,7 @@ import { ByteBuffer } from '../../byte-buffer.js'
 import { BYTE_MAP, isWhitespace } from '../../byte-map.js'
 import { SoqlParserError } from '../../errors.js'
 import { SOQL_KEYWORDS, SoqlKeyword } from '../../types.js'
+import { bytesToString } from '../../utils.js'
 
 export class SoqlStringBuffer {
     buffer: ByteBuffer
@@ -31,7 +32,7 @@ export class SoqlStringBuffer {
     peekString(): string {
         this.skipWhitespace()
 
-        let extractedWord = ''
+        const bytes: number[] = []
         let offset = 0
         let currByte = this.buffer.peek(offset)
 
@@ -42,12 +43,13 @@ export class SoqlStringBuffer {
             currByte !== BYTE_MAP.openParen &&
             currByte !== BYTE_MAP.closeParen
         ) {
-            extractedWord += String.fromCharCode(currByte)
+            bytes.push(currByte)
             offset++
             currByte = this.buffer.peek(offset)
         }
 
-        return extractedWord
+        // Decode as UTF-8 so multi-byte characters survive intact
+        return bytesToString(new Uint8Array(bytes))
     }
 
     /**
@@ -71,7 +73,7 @@ export class SoqlStringBuffer {
     readString(): string {
         this.skipWhitespace()
 
-        let extractedWord = ''
+        const bytes: number[] = []
         let currByte = this.buffer.peek()
 
         while (
@@ -81,12 +83,13 @@ export class SoqlStringBuffer {
             currByte !== BYTE_MAP.openParen &&
             currByte !== BYTE_MAP.closeParen
         ) {
-            extractedWord += String.fromCharCode(currByte)
+            bytes.push(currByte)
             this.buffer.next()
             currByte = this.buffer.peek()
         }
 
-        return extractedWord
+        // Decode as UTF-8 so multi-byte characters survive intact
+        return bytesToString(new Uint8Array(bytes))
     }
 
     /**
