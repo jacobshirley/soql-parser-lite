@@ -40,3 +40,31 @@ export function bytesToNumber(bytes: Uint8Array): number {
     const str = bytesToString(bytes)
     return Number(str)
 }
+
+/**
+ * Parses a SOQL numeric literal: an optional sign, digits and an optional
+ * decimal part. Hex/binary/octal, exponents, `Infinity` and the empty string
+ * (all accepted by `Number()`) are rejected, as are integers too large to be
+ * represented exactly.
+ *
+ * @returns The number, or `undefined` if the text is not a valid SOQL number
+ * @internal
+ */
+export function parseSoqlNumber(text: string): number | undefined {
+    if (!/^[+-]?\d+(\.\d+)?$/.test(text)) return undefined
+    const value = Number(text)
+    if (!/\./.test(text) && !Number.isSafeInteger(value)) return undefined
+    return value
+}
+
+/**
+ * Parses the non-negative integer used by LIMIT and OFFSET.
+ *
+ * @returns The integer, or `undefined` if the text is not one
+ * @internal
+ */
+export function parseNonNegativeInteger(text: string): number | undefined {
+    if (!/^\d+$/.test(text)) return undefined
+    const value = Number(text)
+    return Number.isSafeInteger(value) ? value : undefined
+}
