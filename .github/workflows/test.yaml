@@ -16,7 +16,7 @@ permissions:
     checks: write
 jobs:
     Tests:
-        runs-on: ubuntu-24.04 # Playwright does not yet support the ubuntu-latest (26.04) image
+        runs-on: ubuntu-26.04 # Playwright does not yet support the ubuntu-latest (26.04) image
         name: Tests
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
